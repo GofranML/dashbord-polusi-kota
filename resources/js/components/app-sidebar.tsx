@@ -26,19 +26,18 @@ export function AppSidebar() {
     const { auth } = usePage().props;
     const userRole = auth.user?.role || 'Viewer / Operator';
 
-    // Define all possible menu items
+    // Define all possible menu items with real paths
     const allItems = {
-        dashboard: { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-        monitoring: { title: 'Monitoring Realtime', href: '#', icon: Activity },
-        peta: { title: 'Peta Lokasi', href: '#', icon: MapIcon },
-        sensor: { title: 'Data Sensor', href: '#', icon: Database },
-        grafik: { title: 'Grafik Analitik', href: '#', icon: BarChart3 },
-        riwayat: { title: 'Riwayat Data', href: '#', icon: History },
-        notif: { title: 'Alert & Notifikasi', href: '#', icon: Bell },
-        device: { title: 'Device IoT', href: '#', icon: Cpu },
-        user: { title: 'Manajemen User', href: '#', icon: Users },
-        export: { title: 'Export Laporan', href: '#', icon: FileDown },
-        settings: { title: 'Settings', href: '#', icon: Settings },
+        dashboard: { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+        peta: { title: 'Peta Lokasi', href: '/maps', icon: MapIcon },
+        riwayat: { title: 'Riwayat Data', href: '/dashboard/history', icon: History },
+        notif: { title: 'Alert & Notifikasi', href: '/dashboard/alerts', icon: Bell },
+        device: { title: 'Device IoT CRUD', href: '/dashboard/admin/devices', icon: Cpu },
+        user: { title: 'Manajemen User', href: '/dashboard/admin/users', icon: Users },
+        config: { title: 'Konfigurasi Sistem', href: '/dashboard/admin/config', icon: Settings },
+        security: { title: 'Keamanan & Backup', href: '/dashboard/admin/security', icon: FileDown },
+        tickets: { title: 'Maintenance Tickets', href: '/dashboard/technician/tickets', icon: Activity },
+        health: { title: 'Device Health Status', href: '/dashboard/technician/health', icon: Database },
     };
 
     // Filter items based on role
@@ -49,19 +48,22 @@ export function AppSidebar() {
     } else if (userRole === 'Petugas Monitoring') {
         mainNavItems = [
             allItems.dashboard,
-            allItems.monitoring,
             allItems.peta,
-            allItems.sensor,
-            allItems.grafik,
-            allItems.notif,
-            allItems.export
+            allItems.riwayat,
+            allItems.notif
+        ];
+    } else if (userRole === 'Teknisi Lapangan') {
+        mainNavItems = [
+            allItems.dashboard,
+            allItems.peta,
+            allItems.tickets,
+            allItems.health
         ];
     } else { // Viewer / Operator
         mainNavItems = [
             allItems.dashboard,
-            allItems.monitoring,
-            allItems.grafik,
-            allItems.peta
+            allItems.peta,
+            allItems.riwayat
         ];
     }
 

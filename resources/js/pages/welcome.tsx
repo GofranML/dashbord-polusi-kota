@@ -30,7 +30,7 @@ import {
     AreaChart,
     Area
 } from 'recharts';
-import { SensorCard, AQIStatus } from '@/components/SensorCard';
+import { SensorCard, AQIStatus,} from '@/components/SensorCard';
 import { GlassCard } from '@/components/GlassCard';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -56,6 +56,19 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+interface MapNode {
+    id: number;
+    name: string;
+    lat: number;
+    lng: number;
+    pm25: number;
+    pm10?: number;
+    mq135?: number;
+    humidity?: number;
+    pressure?: number;
+    rain?: string;
+    timestamp: string;
+}
 // Distance calculation helper (Haversine)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // km
@@ -162,12 +175,35 @@ const sensorData = [
 ];
 
 export default function Welcome() {
-    const { auth } = usePage().props;
+    const { 
+        auth,
+        mapNodes = [],
+        sensorData = [],
+        cityAqi = 75,
+        activeAlertsCount = 0,
+        totalDevicesCount = 0,
+        activeDevicesCount = 0,
+        trendData = [],
+        alertsList = []
+    } = usePage().props as any;
+
     const [time, setTime] = useState(new Date());
     const [mounted, setMounted] = useState(false);
     const [selectedDate, setSelectedDate] = useState('Today');
     const [selectedTime, setSelectedTime] = useState('Live');
     const [currentZoom, setCurrentZoom] = useState(13);
+
+    const getFormattedDate = (daysAgo: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() - daysAgo);
+        return d.toISOString().split('T')[0];
+    };
+
+    const getFormattedLabel = (daysAgo: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() - daysAgo);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -176,10 +212,6 @@ export default function Welcome() {
     }, []);
 
     // Dynamic radius based on zoom
-    // Zoom 15+ (Very close) -> small radius (0.2km)
-    // Zoom 13 (Default) -> medium radius (2km)
-    // Zoom 11 (City) -> large radius (5km)
-    // Zoom 9- (Regional) -> huge radius (15km)
     const getDynamicRadius = (zoom: number) => {
         if (zoom >= 16) return 0.2;
         if (zoom >= 14) return 0.8;
@@ -195,12 +227,12 @@ export default function Welcome() {
     const usedIds = new Set();
 
     // Filtering logic for the map nodes
-    const filteredNodes = mapNodes.filter(node => {
+    const filteredNodes = mapNodes.filter((node: MapNode) => {
         // Map UI filter to ISO Date part
         const dateMap: Record<string, string> = {
-            'Today': '2024-05-14',
-            'Yesterday': '2024-05-13',
-            'May 12': '2024-05-12'
+            'Today': getFormattedDate(0),
+            'Yesterday': getFormattedDate(1),
+            [getFormattedLabel(2)]: getFormattedDate(2)
         };
         
         const targetDate = dateMap[selectedDate];
@@ -219,29 +251,29 @@ export default function Welcome() {
         return true;
     });
 
-    filteredNodes.forEach(node => {
+    filteredNodes.forEach((node: MapNode) => {
         if (usedIds.has(node.id)) return;
 
-        const clusterNodes = filteredNodes.filter(n => 
+        const clusterNodes = filteredNodes.filter((n: MapNode) => 
             !usedIds.has(n.id) && getDistance(node.lat, node.lng, n.lat, n.lng) < radiusKm
         );
 
         if (clusterNodes.length > 0) {
-            const avgPm25 = clusterNodes.reduce((acc, n) => acc + n.pm25, 0) / clusterNodes.length;
-            const avgPm10 = clusterNodes.reduce((acc, n) => acc + (n.pm10 || 0), 0) / clusterNodes.length;
-            const avgMq135 = clusterNodes.reduce((acc, n) => acc + (n.mq135 || 0), 0) / clusterNodes.length;
-            const avgHumidity = clusterNodes.reduce((acc, n) => acc + (n.humidity || 0), 0) / clusterNodes.length;
-            const avgPressure = clusterNodes.reduce((acc, n) => acc + (n.pressure || 0), 0) / clusterNodes.length;
-            const rainStatus = clusterNodes.some(n => n.rain === 'Hujan' || n.rain === 'Gerimis') ? 'Hujan/Gerimis' : 'Cerah/Berawan';
+            const avgPm25 = clusterNodes.reduce((acc : number, n : MapNode) => acc + n.pm25, 0) / clusterNodes.length;
+            const avgPm10 = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.pm10 || 0), 0) / clusterNodes.length;
+            const avgMq135 = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.mq135 || 0), 0) / clusterNodes.length;
+            const avgHumidity = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.humidity || 0), 0) / clusterNodes.length;
+            const avgPressure = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.pressure || 0), 0) / clusterNodes.length;
+            const rainStatus = clusterNodes.some((n : MapNode) => n.rain === 'Hujan' || n.rain === 'Gerimis') ? 'Hujan/Gerimis' : 'Cerah/Berawan';
 
-            const avgLat = clusterNodes.reduce((acc, n) => acc + n.lat, 0) / clusterNodes.length;
-            const avgLng = clusterNodes.reduce((acc, n) => acc + n.lng, 0) / clusterNodes.length;
+            const avgLat = clusterNodes.reduce((acc : number, n : MapNode) => acc + n.lat, 0) / clusterNodes.length;
+            const avgLng = clusterNodes.reduce((acc : number, n : MapNode) => acc + n.lng, 0) / clusterNodes.length;
             
-            const timestamps = clusterNodes.map(n => n.timestamp.split('T')[1].substring(0, 5));
+            const timestamps = clusterNodes.map((n : MapNode) => n.timestamp.split('T')[1].substring(0, 5));
             const minTime = timestamps.sort()[0];
             const maxTime = timestamps.sort()[timestamps.length - 1];
             
-            clusterNodes.forEach(n => usedIds.add(n.id));
+            clusterNodes.forEach((n : MapNode) => usedIds.add(n.id));
             
             clusters.push({
                 lat: avgLat,
@@ -307,7 +339,7 @@ export default function Welcome() {
                             {time.toLocaleTimeString()}
                         </span>
                         <span className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10">
-                            AQI City: <span className="text-orange-400">78 (Moderate)</span>
+                            AQI City: <span className="text-orange-400">{cityAqi} ({cityAqi > 100 ? 'Unhealthy' : cityAqi > 50 ? 'Moderate' : 'Good'})</span>
                         </span>
                         <Link href="/maps" className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-colors text-white">
                             <MapPin className="w-3 h-3 text-cyan-400" />
@@ -331,7 +363,7 @@ export default function Welcome() {
                             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-black uppercase tracking-[0.2em]"
                         >
                             <AlertTriangle className="w-3 h-3" />
-                            Environmental Warning: Moderate Pollution
+                            Environmental Warning: {cityAqi > 100 ? 'Unhealthy Level' : cityAqi > 50 ? 'Moderate Level' : 'Good Level'}
                         </motion.div>
                         <motion.h1 
                             initial={{ opacity: 0, y: 20 }}
@@ -339,7 +371,7 @@ export default function Welcome() {
                             transition={{ delay: 0.1 }}
                             className="text-5xl lg:text-7xl font-black leading-[0.9] tracking-tighter uppercase"
                         >
-                            Condition: <span className="text-orange-400 underline decoration-orange-500/20 underline-offset-8">Unhealthy</span> for Sensitive Groups.
+                            Condition: <span className="text-orange-400 underline decoration-orange-500/20 underline-offset-8">{cityAqi > 100 ? 'Unhealthy' : cityAqi > 50 ? 'Moderate' : 'Good'}</span> for Sensitive Groups.
                         </motion.h1>
                         <motion.p 
                             initial={{ opacity: 0, y: 20 }}
@@ -354,7 +386,7 @@ export default function Welcome() {
                              <div className="flex flex-col">
                                  <span className="text-[10px] text-neutral-500 uppercase font-black tracking-widest">Main AQI Index</span>
                                  <div className="flex items-baseline gap-2">
-                                     <span className="text-5xl font-black text-orange-400 tracking-tighter">78</span>
+                                     <span className="text-5xl font-black text-orange-400 tracking-tighter">{cityAqi}</span>
                                      <span className="text-xs font-bold text-neutral-600 uppercase">Points</span>
                                  </div>
                              </div>
@@ -362,7 +394,7 @@ export default function Welcome() {
                              <div className="flex flex-col">
                                  <span className="text-[10px] text-neutral-500 uppercase font-black tracking-widest">Active Stations</span>
                                  <div className="flex items-baseline gap-2">
-                                     <span className="text-5xl font-black text-white tracking-tighter">24</span>
+                                     <span className="text-5xl font-black text-white tracking-tighter">{activeDevicesCount}</span>
                                      <span className="text-xs font-bold text-neutral-600 uppercase">Online</span>
                                  </div>
                              </div>
@@ -396,7 +428,7 @@ export default function Welcome() {
                 </section>
 
                 <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-                    {sensorData.map((sensor, idx) => (
+                    {sensorData.map((sensor : any, idx : number) => (
                         <SensorCard key={idx} {...sensor} />
                     ))}
                 </section>
@@ -429,7 +461,7 @@ export default function Welcome() {
                                      >
                                          <option value="Today" className="bg-neutral-900">Today</option>
                                          <option value="Yesterday" className="bg-neutral-900">Yesterday</option>
-                                         <option value="May 12" className="bg-neutral-900">May 12</option>
+                                         <option value={getFormattedLabel(2)} className="bg-neutral-900">{getFormattedLabel(2)}</option>
                                      </select>
                                  </div>
                                  <div className="px-3 py-2 bg-black/60 backdrop-blur-xl rounded-xl border border-white/10 flex items-center gap-3">
@@ -563,7 +595,7 @@ export default function Welcome() {
                              </div>
                              <div className="h-[350px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={chartData}>
+                                    <AreaChart data={trendData && trendData.length > 0 ? trendData : chartData}>
                                         <defs>
                                             <linearGradient id="colorPmPublic" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
@@ -620,12 +652,20 @@ export default function Welcome() {
                                  <h3 className="text-lg font-black uppercase tracking-widest text-red-500">Active Alerts</h3>
                              </div>
                              <div className="space-y-3">
-                                 <div className="p-4 rounded-xl bg-black/40 border border-red-500/20 text-[10px] leading-relaxed uppercase tracking-widest text-neutral-400 font-bold">
-                                     Warning: Kadar MQ-135 di area industri Jakarta Utara meningkat 15% dari batas normal.
-                                 </div>
-                                 <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-[10px] leading-relaxed uppercase tracking-widest text-neutral-400 font-bold">
-                                     Info: Perawatan sensor di sektor 04 dijadwalkan pada 15 Mei 2026.
-                                 </div>
+                                 {alertsList && alertsList.length > 0 ? (
+                                     alertsList.map((alert: any) => (
+                                         <div key={alert.id} className={cn(
+                                             "p-4 rounded-xl bg-black/40 text-[10px] leading-relaxed uppercase tracking-widest font-bold",
+                                             alert.status === 'active' ? 'border border-red-500/20 text-red-400' : 'border border-white/5 text-neutral-400'
+                                         )}>
+                                             {alert.status === 'active' ? '🔴 Warning' : '🟢 Resolved'}: {alert.device_name} - {alert.parameter} limit exceeded with value {alert.value}. ({alert.created_at})
+                                         </div>
+                                     ))
+                                 ) : (
+                                     <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-[10px] leading-relaxed uppercase tracking-widest text-neutral-500 font-bold">
+                                         No recent active alerts.
+                                     </div>
+                                 )}
                              </div>
                          </GlassCard>
 

@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import React, { useState, useEffect } from 'react';
 import { 
     Activity, 
@@ -53,19 +53,47 @@ const chartData = [
     { time: '16:00', pm25: 55, pm10: 40, mq135: 140, humidity: 59 },
 ];
 
-const sensorData = [
-    { title: 'PM2.5', value: 78.4, unit: 'µg/m³', status: 'Tidak Sehat' as AQIStatus, icon: Wind, progress: 75, battery: 85, lastUpdate: '2m ago' },
-    { title: 'PM10', value: 45.2, unit: 'µg/m³', status: 'Sedang' as AQIStatus, icon: Wind, progress: 45, battery: 92, lastUpdate: '1m ago' },
-    { title: 'MQ135', value: 210, unit: 'ppm', status: 'Tidak Sehat' as AQIStatus, icon: Activity, progress: 68, battery: 78, lastUpdate: '5m ago' },
-    { title: 'Humidity', value: 65, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: 65, battery: 88, lastUpdate: '30s ago' },
-    { title: 'Tekanan Udara', value: 1012, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, battery: 95, lastUpdate: '4m ago' },
-    { title: 'Status Hujan', value: 'Cerah', unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: 0, battery: 90, lastUpdate: '10s ago' },
-];
+// No static sensorData, we will declare it dynamically inside the component function to access props.
 
 export default function Dashboard() {
-    const { auth } = usePage().props;
+    const { 
+        auth,
+        latestTelemetries = [],
+        totalDevicesCount = 0,
+        activeDevicesCount = 0,
+        activeAlertsCount = 0
+    } = usePage().props as any;
+
     const userRole = auth.user?.role || 'Viewer / Operator';
     
+    // Calculate dynamic averages based on latestTelemetries
+    const onlineTelemetries = latestTelemetries.filter((t: any) => t.status === 'online');
+    const avgPm25 = onlineTelemetries.length > 0 
+        ? parseFloat((onlineTelemetries.reduce((acc: number, t: any) => acc + t.pm25, 0) / onlineTelemetries.length).toFixed(1))
+        : 0;
+    const avgPm10 = onlineTelemetries.length > 0 
+        ? parseFloat((onlineTelemetries.reduce((acc: number, t: any) => acc + t.pm10, 0) / onlineTelemetries.length).toFixed(1))
+        : 0;
+    const avgMq135 = onlineTelemetries.length > 0 
+        ? Math.round(onlineTelemetries.reduce((acc: number, t: any) => acc + t.mq135, 0) / onlineTelemetries.length)
+        : 0;
+
+    const getAqiStatus = (pm25: number): AQIStatus => {
+        if (pm25 <= 12.0) return 'Baik';
+        if (pm25 <= 35.4) return 'Sedang';
+        if (pm25 <= 55.4) return 'Tidak Sehat';
+        return 'Sangat Tidak Sehat';
+    };
+
+    const sensorData = [
+        { title: 'PM2.5 Rata-rata', value: avgPm25, unit: 'µg/m³', status: getAqiStatus(avgPm25), icon: Wind, progress: Math.min(100, Math.round(avgPm25 * 0.7)), battery: 100, lastUpdate: 'Just now' },
+        { title: 'PM10 Rata-rata', value: avgPm10, unit: 'µg/m³', status: getAqiStatus(avgPm10 * 0.6), icon: Wind, progress: Math.min(100, Math.round(avgPm10 * 0.5)), battery: 100, lastUpdate: 'Just now' },
+        { title: 'MQ135 Rata-rata', value: avgMq135, unit: 'ppm', status: avgPm25 > 55 ? 'Tidak Sehat' as AQIStatus : 'Baik' as AQIStatus, icon: Activity, progress: Math.min(100, Math.round(avgPm25 * 0.8)), battery: 100, lastUpdate: 'Just now' },
+        { title: 'Humidity', value: 65, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: 65, battery: 95, lastUpdate: 'Just now' },
+        { title: 'Tekanan Udara', value: 1012, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, battery: 92, lastUpdate: 'Just now' },
+        { title: 'Status Hujan', value: 'Cerah', unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: 0, battery: 90, lastUpdate: 'Just now' },
+    ];
+
     // RBAC Permissions
     const canManageUsers = userRole === 'Super Admin';
     const canManageDevices = userRole === 'Super Admin';
@@ -104,7 +132,7 @@ export default function Dashboard() {
 
             {/* Critical Alert Banner (Visible for all, but action depends on role) */}
             <AnimatePresence>
-                {sensorData[0].status === 'Tidak Sehat' && (
+                {activeAlertsCount > 0 && (
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -118,17 +146,12 @@ export default function Dashboard() {
                                 <div className="space-y-0.5">
                                     <h4 className="text-sm font-black text-red-500 uppercase tracking-widest">Breach Detected: AQI Threshold Exceeded</h4>
                                     <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest leading-relaxed">
-                                        Sudirman Sector SC-001 reported 78.4 PM2.5. {userRole === 'Super Admin' ? 'Please authorize emergency protocols.' : 'Awaiting admin instructions.'}
+                                        System reported {activeAlertsCount} active environmental breach alerts. {userRole === 'Super Admin' ? 'Please authorize emergency protocols.' : 'Awaiting admin instructions.'}
                                     </p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button className="px-5 py-2 rounded-lg bg-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors">Analyze</button>
-                                {canManageDevices && (
-                                    <button className="px-5 py-2 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-                                        Action
-                                    </button>
-                                )}
+                                <Link href="/dashboard/alerts" className="px-5 py-2 rounded-lg bg-white/5 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors flex items-center justify-center">Analyze Alerts</Link>
                             </div>
                         </GlassCard>
                     </motion.div>
@@ -184,31 +207,35 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                            <td className="py-5 px-4 font-mono text-cyan-400 font-bold tracking-widest">SC-N{i}v2</td>
+                                    {latestTelemetries.map((telemetry: any) => (
+                                        <tr key={telemetry.id} className="hover:bg-white/5 transition-colors group">
+                                            <td className="py-5 px-4 font-mono text-cyan-400 font-bold tracking-widest">{telemetry.device_code}</td>
                                             <td className="py-5 px-4">
                                                 <div className="flex items-center gap-2">
                                                     <MapPin className="w-3 h-3 text-neutral-600" />
-                                                    <span className="font-bold text-neutral-300">Sector {i === 1 ? 'Sudirman' : 'Thamrin'}</span>
+                                                    <span className="font-bold text-neutral-300">{telemetry.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-5 px-4 text-right font-mono font-black">{78 + i}.{i}</td>
+                                            <td className="py-5 px-4 text-right font-mono font-black">{telemetry.pm25} µg/m³</td>
                                             <td className="py-5 px-4 text-center">
                                                 <div className="flex items-center justify-center gap-1.5">
-                                                    <Wifi className="w-3 h-3 text-green-500" />
-                                                    <span className="text-[8px] font-black uppercase text-green-500">Live</span>
+                                                    <Wifi className={cn("w-3 h-3", telemetry.status === 'online' ? 'text-green-500' : 'text-red-500')} />
+                                                    <span className={cn("text-[8px] font-black uppercase", telemetry.status === 'online' ? 'text-green-500' : 'text-red-500')}>
+                                                        {telemetry.status}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td className="py-5 px-4 text-center">
-                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${i === 1 ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
-                                                    {i === 1 ? 'Alert' : 'Nominal'}
+                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
+                                                    telemetry.pm25 > 55 ? 'bg-red-500/10 text-red-500' : telemetry.pm25 > 35 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'
+                                                }`}>
+                                                    {telemetry.pm25 > 55 ? 'Danger' : telemetry.pm25 > 35 ? 'Moderate' : 'Good'}
                                                 </span>
                                             </td>
                                             <td className="py-5 px-4 text-right">
-                                                <button className="p-1.5 hover:bg-white/10 rounded-lg group/btn">
-                                                    <MoreHorizontal className="w-4 h-4 text-neutral-600 group-hover/btn:text-white" />
-                                                </button>
+                                                <Link href={`/dashboard/history?device_id=${telemetry.id}`} className="p-1.5 hover:bg-white/10 rounded-lg group/btn inline-flex items-center justify-center">
+                                                    <ArrowUpRight className="w-4 h-4 text-neutral-600 group-hover/btn:text-white" />
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}
@@ -252,11 +279,11 @@ export default function Dashboard() {
                                      <div className="grid grid-cols-2 gap-4">
                                          <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-1">
                                              <p className="text-[10px] text-neutral-600 font-black uppercase">Avg AQI</p>
-                                             <p className="text-2xl font-black text-orange-400">72.4</p>
+                                             <p className="text-2xl font-black text-orange-400">{avgPm25}</p>
                                          </div>
                                          <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-1">
                                              <p className="text-[10px] text-neutral-600 font-black uppercase">Active Nodes</p>
-                                             <p className="text-2xl font-black text-cyan-400">24/24</p>
+                                             <p className="text-2xl font-black text-cyan-400">{activeDevicesCount}/{totalDevicesCount}</p>
                                          </div>
                                      </div>
                                 </GlassCard>

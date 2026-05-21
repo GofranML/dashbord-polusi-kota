@@ -3,7 +3,7 @@ import { GlassCard } from './GlassCard';
 import { LucideIcon, Battery, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type AQIStatus = 'Baik' | 'Sedang' | 'Tidak Sehat' | 'Berbahaya';
+export type AQIStatus = 'Baik' | 'Sedang' | 'Tidak Sehat' | 'Berbahaya' | 'Sangat Tidak Sehat';
 
 interface SensorCardProps {
     title: string;
@@ -22,6 +22,7 @@ const statusColors = {
     'Sedang': 'text-yellow-400',
     'Tidak Sehat': 'text-orange-400',
     'Berbahaya': 'text-red-400',
+    'Sangat Tidak Sehat': 'text-red-400',
 };
 
 const neonMap = {
@@ -29,6 +30,7 @@ const neonMap = {
     'Sedang': 'blue' as const,
     'Tidak Sehat': 'orange' as const,
     'Berbahaya': 'red' as const,
+    'Sangat Tidak Sehat': 'red' as const,
 };
 
 export function SensorCard({ 
@@ -46,7 +48,7 @@ export function SensorCard({
         <GlassCard neonColor={neonMap[status]} className={cn('p-5', className)}>
             <div className="flex items-center justify-between mb-4">
                 <div className="p-2 rounded-lg bg-white/5">
-                    <Icon className={cn('w-6 h-6', statusColors[status])} />
+                    {/* <Icon className={cn('w-6 h-6', statusColors[status])} /> */}
                 </div>
                 <div className="flex flex-col items-end">
                     <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 uppercase tracking-tighter', statusColors[status])}>
