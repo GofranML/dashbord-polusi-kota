@@ -24,8 +24,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         $latestTelemetries = [];
         foreach ($devices as $device) {
-            $latest = \App\Models\TelemetryLog::where('device_id', $device->id)
-                ->orderBy('created_at', 'desc')
+            $latest = \App\Models\SensorData::where('device_id', $device->id)
+                ->orderBy('datetime', 'desc')
                 ->first();
             if ($latest) {
                 $latestTelemetries[] = [
@@ -35,7 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'region' => $device->region,
                     'pm25' => (double)$latest->pm25,
                     'pm10' => (double)$latest->pm10,
-                    'mq135' => (double)$latest->mq135,
+                    'mq135' => (double)$latest->gas_index,
                     'status' => $device->status,
                 ];
             }
@@ -77,6 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('dashboard/admin/devices/{id}/update', [DeviceController::class, 'update'])->name('dashboard.admin.devices.update');
     Route::delete('dashboard/admin/devices/{id}', [DeviceController::class, 'destroy'])->name('dashboard.admin.devices.delete');
     Route::post('dashboard/admin/devices/{id}/calibrate', [DeviceController::class, 'calibrate'])->name('dashboard.admin.devices.calibrate');
+    Route::post('dashboard/admin/devices/{id}/token', [DeviceController::class, 'generateToken'])->name('dashboard.admin.devices.token');
 
     Route::get('dashboard/admin/config', [AdminController::class, 'config'])->name('dashboard.admin.config');
     Route::post('dashboard/admin/config', [AdminController::class, 'updateConfig'])->name('dashboard.admin.config.update');
@@ -84,6 +85,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard/admin/security', [AdminController::class, 'security'])->name('dashboard.admin.security');
     Route::post('dashboard/admin/security/whitelist', [AdminController::class, 'updateIpWhitelist'])->name('dashboard.admin.security.whitelist');
     Route::get('dashboard/admin/security/backup', [AdminController::class, 'downloadBackup'])->name('dashboard.admin.security.backup');
+
+    Route::get('dashboard/admin/api-docs', [AdminController::class, 'apiDocs'])->name('dashboard.admin.api-docs');
 });
 
 require __DIR__.'/settings.php';
