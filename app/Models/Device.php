@@ -10,6 +10,7 @@ class Device extends Model
     protected $fillable = [
         'device_code',
         'name',
+        'api_token',
         'latitude',
         'longitude',
         'region',
@@ -18,6 +19,10 @@ class Device extends Model
         'signal_strength',
         'calibration_factor',
         'last_seen_at',
+    ];
+
+    protected $hidden = [
+        'api_token',
     ];
 
     protected $casts = [

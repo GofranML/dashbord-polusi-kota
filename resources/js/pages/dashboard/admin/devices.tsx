@@ -10,7 +10,8 @@ import {
     MapPin,
     Wifi,
     WifiOff,
-    AlertCircle
+    AlertCircle,
+    Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard } from '@/components/GlassCard';
@@ -29,6 +30,7 @@ interface DeviceRecord {
     battery_voltage: number;
     signal_strength: number;
     calibration_factor: number;
+    api_token: string;
     last_seen_at: string | null;
     created_at: string;
 }
@@ -40,7 +42,7 @@ const emptyDeviceForm = {
 export default function DevicesPage() {
     const { devicesList = [] } = usePage().props as any;
 
-    const [modal, setModal] = useState<'create' | 'edit' | 'delete' | 'calibrate' | null>(null);
+    const [modal, setModal] = useState<'create' | 'edit' | 'delete' | 'calibrate' | 'token' | null>(null);
     const [selected, setSelected] = useState<DeviceRecord | null>(null);
     const [form, setForm] = useState({ ...emptyDeviceForm });
     const [calibFactor, setCalibFactor] = useState(1.0);
@@ -53,6 +55,7 @@ export default function DevicesPage() {
     };
     const openDelete = (d: DeviceRecord) => { setSelected(d); setModal('delete'); };
     const openCalibrate = (d: DeviceRecord) => { setSelected(d); setCalibFactor(d.calibration_factor); setModal('calibrate'); };
+    const openToken = (d: DeviceRecord) => { setSelected(d); setModal('token'); };
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -85,6 +88,14 @@ export default function DevicesPage() {
         router.post(`/dashboard/admin/devices/${selected.id}/calibrate`, { calibration_factor: calibFactor }, {
             onSuccess: () => { toast.success(`Faktor kalibrasi sensor diperbarui ke ${calibFactor}`); setModal(null); },
             onError: () => toast.error('Gagal menyimpan kalibrasi.')
+        });
+    };
+
+    const handleGenerateToken = () => {
+        if (!selected) return;
+        router.post(`/dashboard/admin/devices/${selected.id}/token`, {}, {
+            onSuccess: () => toast.success('API Token baru berhasil digenerate!'),
+            onError: () => toast.error('Gagal generate token baru.')
         });
     };
 
@@ -179,6 +190,12 @@ export default function DevicesPage() {
                             </div>
 
                             <div className="flex gap-2 pt-2 border-t border-white/5">
+                                <button
+                                    onClick={() => openToken(device)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase rounded-lg hover:bg-emerald-500/20 transition-all"
+                                >
+                                    <Key className="w-3 h-3" /> Token
+                                </button>
                                 <button
                                     onClick={() => openCalibrate(device)}
                                     className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase rounded-lg hover:bg-purple-500/20 transition-all"
@@ -329,6 +346,40 @@ export default function DevicesPage() {
                             <div className="flex gap-3">
                                 <button onClick={() => setModal(null)} className="flex-1 py-3 bg-white/5 border border-white/10 text-[10px] font-black uppercase rounded-xl hover:bg-white/10">Batal</button>
                                 <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white text-[10px] font-black uppercase rounded-xl transition-all">Hapus Node</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {modal === 'token' && selected && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+                        onClick={(e) => e.target === e.currentTarget && setModal(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                            className="bg-[#0c1425] border border-emerald-500/20 rounded-2xl p-8 w-full max-w-lg shadow-2xl"
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                                    <Key className="w-5 h-5 text-emerald-400" /> Device API Token
+                                </h3>
+                                <button onClick={() => setModal(null)}><X className="w-5 h-5 text-neutral-500" /></button>
+                            </div>
+                            <p className="text-xs text-neutral-400 mb-6">Device: <span className="text-white font-bold">{selected.device_code}</span> ({selected.name})</p>
+                            
+                            <div className="space-y-6">
+                                <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+                                    <label className="text-[10px] uppercase font-black tracking-widest text-emerald-500">Current Token (Bearer)</label>
+                                    <div className="font-mono text-xs text-emerald-400 bg-black/50 p-3 rounded-lg break-all select-all">
+                                        {selected.api_token || <span className="text-neutral-500 italic">No token assigned yet.</span>}
+                                    </div>
+                                    <p className="text-[9px] text-neutral-400 italic">Use this token in the Authorization header to authenticate requests from this device.</p>
+                                </div>
+                                <button onClick={handleGenerateToken} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-black text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+                                    Generate New Token
+                                </button>
                             </div>
                         </motion.div>
                     </motion.div>

@@ -20,6 +20,7 @@ class DeviceController extends Controller
                 'id' => $device->id,
                 'device_code' => $device->device_code,
                 'name' => $device->name,
+                'api_token' => $device->api_token,
                 'lat' => (double)$device->latitude,
                 'lng' => (double)$device->longitude,
                 'region' => $device->region,
@@ -154,5 +155,27 @@ class DeviceController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Calibration parameters saved successfully.');
+    }
+
+    /**
+     * Generate or regenerate the API token for the device
+     */
+    public function generateToken($id)
+    {
+        $device = Device::findOrFail($id);
+        
+        $newToken = \Illuminate\Support\Str::random(60);
+        $device->api_token = $newToken;
+        $device->save();
+
+        AuditLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'Device Token Generated',
+            'description' => "Generated new API Token for sensor {$device->device_code} ({$device->name}).",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        return redirect()->back()->with('success', 'New API Token generated successfully.');
     }
 }

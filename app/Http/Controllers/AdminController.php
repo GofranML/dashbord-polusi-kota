@@ -253,4 +253,17 @@ class AdminController extends Controller
 
         return Response::download($dbPath, 'smartcity_backup_' . date('Y-m-d_H-i-s') . '.sqlite');
     }
+
+    /**
+     * Render the API Documentation panel
+     */
+    public function apiDocs()
+    {
+        $content = file_get_contents(base_path('API_DOCUMENTATION.md'));
+        $html = \Illuminate\Support\Str::markdown($content);
+
+        return Inertia::render('dashboard/admin/ApiDocs', [
+            'htmlContent' => $html,
+        ]);
+    }
 }

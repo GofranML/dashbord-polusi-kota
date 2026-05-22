@@ -1,208 +1,91 @@
-# 📌 Pembagian Fitur Berdasarkan Hak Akses User
-## Smart City Air Monitoring Dashboard
+Buatkan sistem API backend lengkap beserta dokumentasi API untuk dashboard monitoring IoT kualitas udara menggunakan Laravel.
 
-Dokumen ini menjelaskan pembagian fitur berdasarkan jenis pengguna (*User Access Level*) pada sistem Smart City Air Monitoring Dashboard.
+Konsep utama:
+- Device IoT mengirim FILE JSON langsung ke server
+- File JSON berisi data sensor
+- Server membaca file JSON lalu menyimpan data ke database
+- API menggunakan REST API
+- Format komunikasi JSON
 
-Tujuan utama pembagian hak akses:
-- meningkatkan keamanan sistem
-- mempermudah operasional
-- membatasi akses fitur sensitif
-- meningkatkan pengalaman pengguna
+Fitur API:
+1. Upload file JSON dari device IoT
+2. Ambil data terbaru
+3. Ambil histori data sensor
+4. Statistik dashboard
+5. Monitoring status device
+6. Status online/offline device
 
----
+Format file JSON yang dikirim device IoT:
 
-# 🌍 1. Public User (Tanpa Login)
+{
+  "datetime": "2026-05-22 20:15:00",
+  "device_name": "IOT-PALEMBANG-01",
+  "pm25": 35,
+  "pm10": 42,
+  "pm1": 20,
+  "gas_index": 410,
+  "gps_lat": -2.9761,
+  "gps_lng": 104.7754,
+  "rain_status": "Tidak Hujan",
+  "air_pressure": 1008.5,
+  "temperature": 29.4,
+  "humidity": 78,
+  "battery_status": 87
+}
 
-Bagian publik ditujukan untuk masyarakat umum agar dapat memantau kualitas udara kota secara realtime tanpa perlu membuat akun.
+Request upload:
+- Method POST
+- Content-Type: multipart/form-data
+- File field name: sensor_file
+- Format file: .json
 
----
+Contoh request upload file JSON menggunakan cURL:
 
-## ✅ Fitur Public Dashboard
+curl -X POST http://localhost:8000/api/iot/upload \
+-H "Authorization: Bearer TOKEN_API" \
+-F "sensor_file=@sensor-data.json"
 
-### 🗺️ Realtime Air Monitoring Map
-- Peta kualitas udara realtime
-- Marker sensor
-- Dynamic clustering
-- Heatmap polusi
-- Layer wilayah
+Kebutuhan tambahan:
+- Server harus memvalidasi file JSON
+- Validasi struktur data sensor
+- Validasi ukuran file
+- Validasi device_name
+- Simpan log upload file
+- Simpan isi JSON ke database
+- Jika JSON invalid tampilkan error
+- Jika upload berhasil tampilkan response sukses
 
----
+Format response API:
 
-### 📊 Statistik Kota
-- AQI rata-rata kota
-- Wilayah terbaik
-- Wilayah terburuk
-- Jumlah sensor aktif
-- Jumlah alert aktif
+{
+  "success": true,
+  "message": "File JSON berhasil diproses",
+  "data": {
+    "device_name": "IOT-PALEMBANG-01",
+    "datetime": "2026-05-22 20:15:00"
+  }
+}
 
----
+Buatkan juga:
+- Struktur database MySQL
+- Migration Laravel
+- Model Laravel
+- Controller Laravel
+- API Routes
+- Middleware authentication
+- Dokumentasi endpoint lengkap
+- Contoh response error
+- Contoh file JSON valid
+- Contoh file JSON invalid
+- Penjelasan alur upload device IoT ke server
+- Penjelasan integrasi realtime dashboard
+- Best practice keamanan API IoT
+- Rate limiting API
+- Monitoring device online/offline
 
-### 📈 Grafik Realtime
-- PM2.5
-- PM10
-- MQ-135
-- Humidity
-- Air Pressure
-
----
-
-### 🌦️ Informasi Cuaca
-- Status cuaca realtime
-- Suhu
-- Kelembaban udara
-- Tekanan udara
-
----
-
-### ⚠️ Public Alert System
-- Notifikasi udara buruk
-- Informasi area berbahaya
-- Alert realtime kualitas udara
-
----
-
-### 🔍 Filter Dasar
-- Filter wilayah
-- Filter parameter sensor
-- Filter waktu sederhana
-
----
-
-### 📱 Mobile Dashboard
-- Tampilan mobile friendly
-- Dashboard ringan untuk smartphone
-
----
-
-# 🔐 2. Authenticated User (Dengan Login)
-
-Bagian ini ditujukan untuk operator monitoring, petugas lingkungan, dan pengguna internal.
-
----
-
-## ✅ Fitur User Login
-
-### 📈 Historical Data
-- Riwayat data sensor
-- Grafik mingguan
-- Grafik bulanan
-- Perbandingan antar sensor
-
----
-
-### 📄 Export Data
-- Export PDF
-- Export Excel
-- Export CSV
-
----
-
-### 🔔 Alert Management
-- Riwayat alert
-- Resolve alert
-- ACK alert
-- Threshold custom
-
----
-
-### ⚙️ Personal Dashboard
-- Custom widget
-- Bookmark lokasi sensor
-- Pengaturan tema dashboard
-
----
-
-### 📬 Notification Integration
-- Email notification
-- Telegram notification
-- WhatsApp notification
-
----
-
-# 🛠️ 3. Admin / Operator Dashboard
-
-Role ini digunakan oleh pengelola sistem dan command center.
-
----
-
-## ✅ Fitur Admin
-
-### 👥 User Management
-- Tambah user
-- Edit user
-- Suspend akun
-- Manajemen role
-- Audit log
-
----
-
-### 📡 Device Management
-- Tambah sensor
-- Edit sensor
-- Monitoring sensor
-- Kalibrasi perangkat
-- Monitoring online/offline
-
----
-
-### ⚙️ System Configuration
-- Pengaturan threshold
-- Pengaturan interval data
-- Pengaturan notifikasi
-- Pengaturan wilayah monitoring
-
----
-
-### 📊 Smart Analytics
-- AI prediction
-- AQI forecasting
-- Trend analysis
-- Statistical analysis
-
----
-
-### 🔒 Security Management
-- 2FA authentication
-- Backup database
-- IP restriction
-- Security log
-
----
-
-# 🔧 4. Teknisi Lapangan
-
-Role khusus untuk maintenance dan pengecekan perangkat IoT di lapangan.
-
----
-
-## ✅ Fitur Teknisi
-
-### 🛠️ Maintenance Management
-- Ticket maintenance
-- Jadwal maintenance
-- Histori perbaikan
-- Histori kalibrasi
-
----
-
-### 📍 Lokasi Sensor
-- Navigasi sensor
-- Tracking lokasi perangkat
-- QR Code sensor
-
----
-
-### 🔋 Device Health Monitoring
-- Tegangan baterai
-- Kekuatan sinyal
-- Status koneksi
-- Last seen sensor
-
----
-
-# 📌 Struktur URL Dashboard
-
-## 🌐 Public Dashboard
-
-```text
-/
+Gunakan:
+- Laravel terbaru
+- MySQL
+- Laravel API Resource
+- Laravel Validation
+- Clean code structure

@@ -36,6 +36,7 @@ export function AppSidebar() {
         user: { title: 'Manajemen User', href: '/dashboard/admin/users', icon: Users },
         config: { title: 'Konfigurasi Sistem', href: '/dashboard/admin/config', icon: Settings },
         security: { title: 'Keamanan & Backup', href: '/dashboard/admin/security', icon: FileDown },
+        apiDocs: { title: 'API Documentation', href: '/dashboard/admin/api-docs', icon: BookOpen },
         tickets: { title: 'Maintenance Tickets', href: '/dashboard/technician/tickets', icon: Activity },
         health: { title: 'Device Health Status', href: '/dashboard/technician/health', icon: Database },
     };

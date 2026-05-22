@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Device;
-use App\Models\TelemetryLog;
+use App\Models\SensorData;
 use App\Models\Alert;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,8 +29,8 @@ class TelemetryController extends Controller
         $pm25Count = 0;
 
         foreach ($devices as $device) {
-            $latest = TelemetryLog::where('device_id', $device->id)
-                ->orderBy('created_at', 'desc')
+            $latest = SensorData::where('device_id', $device->id)
+                ->orderBy('datetime', 'desc')
                 ->first();
 
             if ($latest) {
@@ -43,11 +43,11 @@ class TelemetryController extends Controller
                     'region' => $device->region,
                     'pm25' => (double)$latest->pm25,
                     'pm10' => (double)$latest->pm10,
-                    'mq135' => (double)$latest->mq135,
+                    'mq135' => (double)$latest->gas_index,
                     'humidity' => (double)$latest->humidity,
-                    'pressure' => (double)$latest->pressure,
-                    'rain' => $latest->weather,
-                    'timestamp' => $latest->created_at->toIso8601String(),
+                    'pressure' => (double)$latest->air_pressure,
+                    'rain' => $latest->rain_status,
+                    'timestamp' => $latest->datetime->toIso8601String(),
                 ];
 
                 if ($device->status === 'online') {
@@ -84,16 +84,16 @@ class TelemetryController extends Controller
         $sudirman = Device::where('name', 'Sudirman Tower A')->first();
         $trendData = [];
         if ($sudirman) {
-            $trendData = TelemetryLog::where('device_id', $sudirman->id)
-                ->where('created_at', '>=', Carbon::now()->subHours(24))
-                ->orderBy('created_at', 'asc')
+            $trendData = SensorData::where('device_id', $sudirman->id)
+                ->where('datetime', '>=', Carbon::now()->subHours(24))
+                ->orderBy('datetime', 'asc')
                 ->get()
                 ->map(function ($log) {
                     return [
-                        'time' => $log->created_at->format('H:i'),
+                        'time' => $log->datetime->format('H:i'),
                         'pm25' => $log->pm25,
                         'pm10' => $log->pm10,
-                        'mq135' => $log->mq135,
+                        'mq135' => $log->gas_index,
                         'humidity' => $log->humidity,
                     ];
                 });
@@ -130,8 +130,8 @@ class TelemetryController extends Controller
         $latestTelemetries = [];
 
         foreach ($devices as $device) {
-            $latest = TelemetryLog::where('device_id', $device->id)
-                ->orderBy('created_at', 'desc')
+            $latest = SensorData::where('device_id', $device->id)
+                ->orderBy('datetime', 'desc')
                 ->first();
 
             if ($latest) {
@@ -145,11 +145,11 @@ class TelemetryController extends Controller
                     'status' => $device->status,
                     'pm25' => (double)$latest->pm25,
                     'pm10' => (double)$latest->pm10,
-                    'mq135' => (double)$latest->mq135,
+                    'mq135' => (double)$latest->gas_index,
                     'humidity' => (double)$latest->humidity,
-                    'pressure' => (double)$latest->pressure,
-                    'rain' => $latest->weather,
-                    'timestamp' => $latest->created_at->toIso8601String(),
+                    'pressure' => (double)$latest->air_pressure,
+                    'rain' => $latest->rain_status,
+                    'timestamp' => $latest->datetime->toIso8601String(),
                 ];
             }
         }
@@ -171,24 +171,24 @@ class TelemetryController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->subDays(3)->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
         
-        $query = TelemetryLog::where('device_id', $deviceId)
-            ->whereBetween('created_at', [
+        $query = SensorData::where('device_id', $deviceId)
+            ->whereBetween('datetime', [
                 Carbon::parse($startDate)->startOfDay(),
                 Carbon::parse($endDate)->endOfDay()
             ])
-            ->orderBy('created_at', 'asc');
+            ->orderBy('datetime', 'asc');
 
-        $telemetryLogs = $query->get();
+        $sensorDataLogs = $query->get();
 
-        $chartData = $telemetryLogs->map(function ($log) {
+        $chartData = $sensorDataLogs->map(function ($log) {
             return [
-                'time' => $log->created_at->format('Y-m-d H:i'),
+                'time' => $log->datetime->format('Y-m-d H:i'),
                 'pm25' => $log->pm25,
                 'pm10' => $log->pm10,
-                'mq135' => $log->mq135,
+                'mq135' => $log->gas_index,
                 'humidity' => $log->humidity,
-                'pressure' => $log->pressure,
-                'weather' => $log->weather,
+                'pressure' => $log->air_pressure,
+                'weather' => $log->rain_status,
             ];
         });
 
@@ -223,22 +223,22 @@ class TelemetryController extends Controller
             // CSV Headers
             fputcsv($file, ['Timestamp', 'PM2.5 (ug/m3)', 'PM10 (ug/m3)', 'MQ-135 (ppm)', 'Humidity (%)', 'Pressure (hPa)', 'Weather']);
 
-            TelemetryLog::where('device_id', $deviceId)
-                ->whereBetween('created_at', [
+            SensorData::where('device_id', $deviceId)
+                ->whereBetween('datetime', [
                     Carbon::parse($startDate)->startOfDay(),
                     Carbon::parse($endDate)->endOfDay()
                 ])
-                ->orderBy('created_at', 'asc')
+                ->orderBy('datetime', 'asc')
                 ->chunk(200, function ($logs) use ($file) {
                     foreach ($logs as $log) {
                         fputcsv($file, [
-                            $log->created_at->toDateTimeString(),
+                            $log->datetime->toDateTimeString(),
                             $log->pm25,
                             $log->pm10,
-                            $log->mq135,
+                            $log->gas_index,
                             $log->humidity,
-                            $log->pressure,
-                            $log->weather,
+                            $log->air_pressure,
+                            $log->rain_status,
                         ]);
                     }
                 });
@@ -273,23 +273,23 @@ class TelemetryController extends Controller
             // Excel-friendly Tab Separated Headers
             fwrite($file, "Timestamp\tPM2.5 (ug/m3)\tPM10 (ug/m3)\tMQ-135 (ppm)\tHumidity (%)\tPressure (hPa)\tWeather\n");
 
-            TelemetryLog::where('device_id', $deviceId)
-                ->whereBetween('created_at', [
+            SensorData::where('device_id', $deviceId)
+                ->whereBetween('datetime', [
                     Carbon::parse($startDate)->startOfDay(),
                     Carbon::parse($endDate)->endOfDay()
                 ])
-                ->orderBy('created_at', 'asc')
+                ->orderBy('datetime', 'asc')
                 ->chunk(200, function ($logs) use ($file) {
                     foreach ($logs as $log) {
                         fwrite($file, sprintf(
                             "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-                            $log->created_at->toDateTimeString(),
+                            $log->datetime->toDateTimeString(),
                             $log->pm25,
                             $log->pm10,
-                            $log->mq135,
+                            $log->gas_index,
                             $log->humidity,
-                            $log->pressure,
-                            $log->weather
+                            $log->air_pressure,
+                            $log->rain_status
                         ));
                     }
                 });
