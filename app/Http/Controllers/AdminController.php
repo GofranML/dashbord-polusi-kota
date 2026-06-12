@@ -159,7 +159,7 @@ class AdminController extends Controller
                 'telegramToken' => '87654321:AAE-MOCKTOKENHERE',
                 'telegramChatId' => '@smartcity_air_alerts',
                 'whatsappWebhook' => 'https://api.whatsapp-mock.com/send',
-                'regions' => ['Jakarta Pusat', 'Jakarta Utara', 'Jakarta Timur', 'Jakarta Selatan', 'Jakarta Barat'],
+                'regions' => ['Ilir Barat', 'Ilir Timur', 'Seberang Ulu', 'Kalidoni', 'Kertapati', 'Plaju', 'Sukarami', 'Alang-Alang Lebar', 'Kemuning'],
             ]
         ]);
     }

@@ -35,17 +35,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'region' => $device->region,
                     'pm25' => (double)$latest->pm25,
                     'pm10' => (double)$latest->pm10,
+                    'pm1' => (double)$latest->pm1,
                     'mq135' => (double)$latest->gas_index,
+                    'humidity' => (double)$latest->humidity,
+                    'pressure' => (double)$latest->air_pressure,
+                    'rain' => $latest->rain_status,
                     'status' => $device->status,
                 ];
             }
         }
+
+        // Fetch 24-hour chart trend data for default device
+        $defaultDevice = $devices->first();
+        $trendData = [];
+        if ($defaultDevice) {
+            $trendData = \App\Models\SensorData::where('device_id', $defaultDevice->id)
+                ->where('datetime', '>=', \Carbon\Carbon::now()->subHours(24))
+                ->orderBy('datetime', 'asc')
+                ->get()
+                ->map(function ($log) {
+                    return [
+                        'time' => $log->datetime->format('H:i'),
+                        'pm25' => (double)$log->pm25,
+                        'pm10' => (double)$log->pm10,
+                        'pm1' => (double)$log->pm1,
+                        'mq135' => (double)$log->gas_index,
+                        'humidity' => (double)$log->humidity,
+                    ];
+                })->toArray();
+        }
+
+        // Fetch actual system users
+        $systemUsers = \App\Models\User::orderBy('name', 'asc')
+            ->take(5)
+            ->get()
+            ->map(function ($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'role' => $u->role,
+                    'email' => $u->email,
+                ];
+            })->toArray();
 
         return Inertia::render('dashboard', [
             'latestTelemetries' => $latestTelemetries,
             'totalDevicesCount' => $totalDevices,
             'activeDevicesCount' => $activeDevices,
             'activeAlertsCount' => $activeAlerts,
+            'trendData' => $trendData,
+            'systemUsers' => $systemUsers,
         ]);
     })->name('dashboard');
 

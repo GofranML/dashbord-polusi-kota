@@ -1,0 +1,27 @@
+flowchart TD
+    Start([User Membuka Halaman]) --> AccessView{Halaman apa yang diakses?}
+    
+    AccessView -- Welcome / Maps Publik --> LoadPublicController[Panggil TelemetryController welcome/maps]
+    LoadPublicController --> QueryLatest[Query Telemetry Sensor Terakhir untuk Semua Device]
+    QueryLatest --> CalcCityAQI[Hitung rata-rata AQI Kota berdasarkan PM2.5]
+    CalcCityAQI --> LoadAlerts[Query 5 Alert Aktif Terakhir]
+    LoadAlerts --> LoadTrend[Query Data Tren 24 Jam Sudirman Tower A]
+    LoadTrend --> RenderPublicReact[Kirim data via Inertia Props ke React]
+    
+    AccessView -- Private Dashboard Admin --> CheckAuth{Apakah User Terautentikasi?}
+    CheckAuth -- Belum Login --> RedirectLogin[Redirect ke Halaman Login]
+    CheckAuth -- Sudah Login --> LoadPrivateController[Inisialisasi Data Dashboard]
+    LoadPrivateController --> QueryMetrics[Query Jumlah Device & Alert Aktif]
+    QueryMetrics --> QueryLatestTelemetry[Query Sensor Terbaru tiap Device]
+    QueryLatestTelemetry --> RenderPrivateReact[Kirim data via Inertia ke React Page]
+    
+    RenderPublicReact & RenderPrivateReact --> ReactRender[React Merender Tampilan: Map, Cards, Charts]
+    
+    ReactRender --> InitPolling[Jalankan API Polling setiap 5 detik]
+    InitPolling --> FetchLatestAPI[Request HTTP GET ke /api/dashboard/latest & /api/devices]
+    FetchLatestAPI --> CheckDeviceStatus{Apakah status device \n last_seen_at > 5 menit?}
+    CheckDeviceStatus -- Ya --> UpdateOffline[Update status device menjadi offline di DB]
+    CheckDeviceStatus -- Tidak --> NoUpdate[Biarkan status tetap]
+    
+    UpdateOffline & NoUpdate --> ReturnJSON[Kembalikan data sensor & status terbaru]
+    ReturnJSON --> UpdateReactState[Update State React & Render ulang component]

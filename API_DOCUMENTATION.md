@@ -238,7 +238,52 @@ Mengambil histori data secara *paginated* (berhalaman). Mendukung filter berdasa
 
 ---
 
-## 4. Dashboard - Statistik
+## 4. Dashboard - Ambil Semua Histori Data Sensor (Tanpa Paginasi)
+
+Mengambil histori data sensor secara lengkap dari awal sampai akhir. Mendukung filter opsional berdasarkan stasiun node.
+
+**Endpoint:** `GET /dashboard/history/all`
+
+**Query Params (Opsional):**
+- `device_id`: ID stasiun node
+
+**Response Sukses:**
+```json
+{
+  "success": true,
+  "count": 888,
+  "data": [
+    {
+      "id": 1,
+      "device_id": 1,
+      "datetime": "2026-06-10T10:00:00.000000Z",
+      "pm25": 35.5,
+      "pm10": 42.1,
+      "pm1": 20.3,
+      "gas_index": 410,
+      "gps_lat": -2.9909,
+      "gps_lng": 104.7566,
+      "rain_status": "Tidak Hujan",
+      "air_pressure": 1008.5,
+      "temperature": 29.4,
+      "humidity": 78,
+      "battery_status": 87,
+      "created_at": "2026-06-12T12:00:00.000000Z",
+      "updated_at": "2026-06-12T12:00:00.000000Z",
+      "device": {
+        "id": 1,
+        "device_code": "IOT-PALEMBANG-01",
+        "name": "Kambang Iwak Park",
+        "status": "online"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## 5. Dashboard - Statistik
 
 Mendapatkan ringkasan/rata-rata data (seperti rata-rata PM2.5, suhu) untuk satu hari penuh.
 
@@ -264,7 +309,7 @@ Mendapatkan ringkasan/rata-rata data (seperti rata-rata PM2.5, suhu) untuk satu 
 
 ---
 
-## 5. Monitoring Status Device (Online/Offline)
+## 6. Monitoring Status Device (Online/Offline)
 
 Mengambil daftar semua perangkat dan status terakhirnya. Jika perangkat tidak mengirim data selama lebih dari 5 menit, maka statusnya otomatis menjadi `offline`.
 
@@ -288,7 +333,7 @@ Mengambil daftar semua perangkat dan status terakhirnya. Jika perangkat tidak me
 
 ---
 
-## 6. Menu Dashboard (Akses Khusus Super Admin)
+## 7. Menu Dashboard (Akses Khusus Super Admin)
 
 Endpoint ini digunakan oleh frontend untuk merender struktur menu dashboard navigasi yang hanya boleh diakses oleh pengguna dengan role **Super Admin** (misalnya pengelola pusat kota atau admin sistem).
 

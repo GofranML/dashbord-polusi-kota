@@ -44,6 +44,7 @@ export default function HistoryPage() {
     const [activeSeries, setActiveSeries] = useState({
         pm25: true,
         pm10: false,
+        pm1: false,
         mq135: false,
         humidity: false
     });
@@ -168,6 +169,7 @@ export default function HistoryPage() {
                                     {[
                                         { key: 'pm25', label: 'PM2.5', color: 'border-cyan-500/50 text-cyan-400 bg-cyan-500/5', activeColor: 'bg-cyan-500 text-black' },
                                         { key: 'pm10', label: 'PM10', color: 'border-purple-500/50 text-purple-400 bg-purple-500/5', activeColor: 'bg-purple-500 text-white' },
+                                        { key: 'pm1', label: 'PM1', color: 'border-emerald-500/50 text-emerald-400 bg-emerald-500/5', activeColor: 'bg-emerald-500 text-black' },
                                         { key: 'mq135', label: 'MQ135', color: 'border-orange-500/50 text-orange-400 bg-orange-500/5', activeColor: 'bg-orange-500 text-white' },
                                         { key: 'humidity', label: 'Kelembaban', color: 'border-blue-500/50 text-blue-400 bg-blue-500/5', activeColor: 'bg-blue-500 text-white' }
                                     ].map(btn => (
@@ -197,6 +199,7 @@ export default function HistoryPage() {
                                         />
                                         {activeSeries.pm25 && <Line type="monotone" dataKey="pm25" name="PM2.5" stroke="#06b6d4" strokeWidth={3} activeDot={{ r: 6 }} dot={false} />}
                                         {activeSeries.pm10 && <Line type="monotone" dataKey="pm10" name="PM10" stroke="#a855f7" strokeWidth={2} dot={false} />}
+                                        {activeSeries.pm1 && <Line type="monotone" dataKey="pm1" name="PM1" stroke="#10b981" strokeWidth={2} dot={false} />}
                                         {activeSeries.mq135 && <Line type="monotone" dataKey="mq135" name="MQ135 (ppm)" stroke="#f97316" strokeWidth={2} dot={false} />}
                                         {activeSeries.humidity && <Line type="monotone" dataKey="humidity" name="Humidity (%)" stroke="#3b82f6" strokeWidth={2} dot={false} />}
                                     </LineChart>
@@ -251,6 +254,12 @@ export default function HistoryPage() {
                                     <span className="text-neutral-500">Rata-rata PM2.5</span>
                                     <span className="font-mono font-bold text-cyan-400">
                                         {(chartData.reduce((acc: number, log: any) => acc + log.pm25, 0) / chartData.length).toFixed(2)} µg/m³
+                                    </span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-neutral-500">Rata-rata PM1</span>
+                                    <span className="font-mono font-bold text-emerald-400">
+                                        {(chartData.reduce((acc: number, log: any) => acc + (log.pm1 || 0), 0) / chartData.length).toFixed(2)} µg/m³
                                     </span>
                                 </div>
                                 <div className="flex justify-between pb-1">

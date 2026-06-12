@@ -1,0 +1,27 @@
+graph TD
+    subgraph Perangkat_IoT [Perangkat IoT]
+        IoT[Sensor Node / Device]
+    end
+
+    subgraph Backend_Server [Backend Server - Laravel 13]
+        Router[API/Web Routes]
+        Middleware[IotDeviceAuth & Rate Limiting]
+        Controller[Controllers: IotDataController, DashboardController]
+        DB[(Database: SQLite/MySQL)]
+    end
+
+    subgraph Frontend_Client [Frontend Client - React 19 + Inertia]
+        Welcome[Welcome Page / Public Map Node]
+        Dashboard[Admin Dashboard Panel]
+        History[History & Export Panel]
+        AlertPanel[Alert & Configuration Panel]
+    end
+
+    IoT -->|1. POST Upload Data / File JSON| Router
+    Router -->|2. Cek Token & Throttle| Middleware
+    Middleware -->|3. Validasi & Simpan| Controller
+    Controller -->|4. Insert/Update Data| DB
+
+    Welcome & Dashboard & History & AlertPanel -->|Request View / JSON API| Router
+    Controller -->|Query Metrics| DB
+    Controller -->|Send Page Props / JSON Response| Welcome & Dashboard & History & AlertPanel

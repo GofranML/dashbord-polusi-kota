@@ -1,0 +1,41 @@
+flowchart TD
+    Start([Mulai: IoT Kirim Data]) --> Request[Kirim HTTP POST ke /api/iot/upload]
+    
+    Request --> CheckThrottle{Apakah request <= 60 per menit?}
+    CheckThrottle -- Tidak --> Error429[Error 429: Too Many Requests] --> End([Selesai])
+    CheckThrottle -- Ya --> CheckToken{Cek Bearer Token di Header}
+    
+    CheckToken -- Tidak Ada / Invalid --> Error401[Error 401: Unauthorized] --> End
+    CheckToken -- Token Valid --> GetDevice[Dapatkan Data Device dari DB]
+    
+    GetDevice --> UpdateOnline[Update Device status = online & last_seen_at = NOW]
+    
+    UpdateOnline --> DetectPayload{Ada File 'sensor_file'?}
+    
+    DetectPayload -- Ya --> ValidateFile{Validasi tipe file JSON & ukuran <= 10MB}
+    ValidateFile -- Gagal --> LogFailFile[Log Upload: failed] --> Error422[Error 422: Validation Error] --> End
+    ValidateFile -- Sukses --> ParseJSON{Parse isi file JSON}
+    ParseJSON -- JSON Invalid --> LogFailJSON[Log Upload: failed] --> Error400[Error 400: Invalid JSON format] --> End
+    ParseJSON -- JSON Valid --> CheckDeviceName
+    
+    DetectPayload -- Tidak --> ParseBody{Ambil Raw JSON Body}
+    ParseBody -- Kosong / Invalid --> ErrorJSON[Error 400: Empty or invalid JSON body] --> End
+    ParseBody -- JSON Valid --> CheckDeviceName
+    
+    CheckDeviceName{Apakah device_name cocok dengan DB?}
+    CheckDeviceName -- Tidak Cocok --> LogFailMismatch[Log Upload: failed] --> Error403[Error 403: Device name mismatch] --> End
+    CheckDeviceName -- Cocok --> DetermineMode{Apakah ada array sensor_data? \n Batch vs Single}
+    
+    DetermineMode -- Ya Batch --> ValidateRows{Validasi tipe data setiap baris secara iteratif}
+    DetermineMode -- Tidak Single --> ValidateRows
+    
+    ValidateRows -- Ada Baris Gagal --> LogFailValidation[Log Upload: failed] --> Error422_Rows[Error 422: Invalid data in row] --> End
+    
+    ValidateRows -- Semua Baris Valid --> DBTransaction[Mulai DB Transaction]
+    DBTransaction --> SaveLoop[Loop: Simpan menggunakan SensorData::updateOrCreate]
+    SaveLoop --> Commit{Apakah semua baris berhasil ditulis?}
+    Commit -- Gagal --> Rollback[Rollback DB Transaction] --> LogFailDB[Log Upload: failed] --> Error500[Error 500: Server Error] --> End
+    Commit -- Sukses --> CommitDB[Commit DB Transaction]
+    
+    CommitDB --> LogSuccess[Log Upload: success]
+    LogSuccess --> SuccessResponse[Status 200 OK: Data berhasil disimpan] --> End

@@ -15,6 +15,7 @@ Route::middleware([IotDeviceAuth::class, 'throttle:60,1'])->group(function () {
 Route::prefix('dashboard')->group(function () {
     Route::get('/latest', [DashboardController::class, 'latest']);
     Route::get('/history', [DashboardController::class, 'history']);
+    Route::get('/history/all', [DashboardController::class, 'allHistory']);
     Route::get('/statistics', [DashboardController::class, 'statistics']);
 });
 

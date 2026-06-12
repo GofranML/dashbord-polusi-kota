@@ -61,7 +61,9 @@ export default function Dashboard() {
         latestTelemetries = [],
         totalDevicesCount = 0,
         activeDevicesCount = 0,
-        activeAlertsCount = 0
+        activeAlertsCount = 0,
+        trendData = [],
+        systemUsers = []
     } = usePage().props as any;
 
     const userRole = auth.user?.role || 'Viewer / Operator';
@@ -74,6 +76,9 @@ export default function Dashboard() {
     const avgPm10 = onlineTelemetries.length > 0 
         ? parseFloat((onlineTelemetries.reduce((acc: number, t: any) => acc + t.pm10, 0) / onlineTelemetries.length).toFixed(1))
         : 0;
+    const avgPm1 = onlineTelemetries.length > 0 
+        ? parseFloat((onlineTelemetries.reduce((acc: number, t: any) => acc + (t.pm1 || 0), 0) / onlineTelemetries.length).toFixed(1))
+        : 0;
     const avgMq135 = onlineTelemetries.length > 0 
         ? Math.round(onlineTelemetries.reduce((acc: number, t: any) => acc + t.mq135, 0) / onlineTelemetries.length)
         : 0;
@@ -85,13 +90,24 @@ export default function Dashboard() {
         return 'Sangat Tidak Sehat';
     };
 
+    const avgHumidity = onlineTelemetries.length > 0
+        ? parseFloat((onlineTelemetries.reduce((acc: number, t: any) => acc + (t.humidity || 0), 0) / onlineTelemetries.length).toFixed(1))
+        : 0;
+    const avgPressure = onlineTelemetries.length > 0
+        ? parseFloat((onlineTelemetries.reduce((acc: number, t: any) => acc + (t.pressure || 0), 0) / onlineTelemetries.length).toFixed(1))
+        : 0;
+    const rainStatus = onlineTelemetries.length > 0
+        ? (onlineTelemetries.some((t: any) => t.rain === 'Hujan' || t.rain === 'Gerimis') ? 'Hujan/Gerimis' : 'Cerah')
+        : 'Cerah';
+
     const sensorData = [
         { title: 'PM2.5 Rata-rata', value: avgPm25, unit: 'µg/m³', status: getAqiStatus(avgPm25), icon: Wind, progress: Math.min(100, Math.round(avgPm25 * 0.7)), battery: 100, lastUpdate: 'Just now' },
         { title: 'PM10 Rata-rata', value: avgPm10, unit: 'µg/m³', status: getAqiStatus(avgPm10 * 0.6), icon: Wind, progress: Math.min(100, Math.round(avgPm10 * 0.5)), battery: 100, lastUpdate: 'Just now' },
+        { title: 'PM1 Rata-rata', value: avgPm1, unit: 'µg/m³', status: getAqiStatus(avgPm1 * 1.5), icon: Wind, progress: Math.min(100, Math.round(avgPm1 * 1.5)), battery: 100, lastUpdate: 'Just now' },
         { title: 'MQ135 Rata-rata', value: avgMq135, unit: 'ppm', status: avgPm25 > 55 ? 'Tidak Sehat' as AQIStatus : 'Baik' as AQIStatus, icon: Activity, progress: Math.min(100, Math.round(avgPm25 * 0.8)), battery: 100, lastUpdate: 'Just now' },
-        { title: 'Humidity', value: 65, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: 65, battery: 95, lastUpdate: 'Just now' },
-        { title: 'Tekanan Udara', value: 1012, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, battery: 92, lastUpdate: 'Just now' },
-        { title: 'Status Hujan', value: 'Cerah', unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: 0, battery: 90, lastUpdate: 'Just now' },
+        { title: 'Humidity', value: avgHumidity, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: Math.min(100, Math.round(avgHumidity)), battery: 95, lastUpdate: 'Just now' },
+        { title: 'Tekanan Udara', value: avgPressure, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, battery: 92, lastUpdate: 'Just now' },
+        { title: 'Status Hujan', value: rainStatus, unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: rainStatus === 'Cerah' ? 0 : 70, battery: 90, lastUpdate: 'Just now' },
     ];
 
     // RBAC Permissions
@@ -257,14 +273,21 @@ export default function Dashboard() {
                                              <Users className="w-4 h-4" />
                                              System Access
                                          </h3>
-                                         <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">6 Active</span>
+                                         <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">{systemUsers.length > 0 ? systemUsers.length : 3} Active</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {['Petugas A', 'Petugas B', 'Viewer X'].map((n, i) => (
-                                            <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                                        {(systemUsers.length > 0 ? systemUsers : [
+                                            { id: 1, name: 'Petugas A', role: 'Petugas Monitoring' },
+                                            { id: 2, name: 'Petugas B', role: 'Petugas Monitoring' },
+                                            { id: 3, name: 'Viewer X', role: 'Viewer / Operator' }
+                                        ]).map((user: any, i: number) => (
+                                            <div key={user.id || i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-black">{n[0]}</div>
-                                                    <span className="text-xs font-bold">{n}</span>
+                                                    <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-black">{user.name[0]}</div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold">{user.name}</span>
+                                                        <span className="text-[8px] text-neutral-500 uppercase font-black tracking-widest">{user.role}</span>
+                                                    </div>
                                                 </div>
                                                 <Settings className="w-3 h-3 text-neutral-500 cursor-pointer" />
                                             </div>
@@ -302,10 +325,12 @@ export default function Dashboard() {
                         </div>
                         <div className="flex-1 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData}>
+                                <AreaChart data={trendData.length > 0 ? trendData : chartData}>
                                     <XAxis dataKey="time" hide />
                                     <YAxis hide />
                                     <Area type="monotone" dataKey="pm25" stroke="#06b6d4" strokeWidth={3} fill="#06b6d415" />
+                                    <Area type="monotone" dataKey="pm10" stroke="#a855f7" strokeWidth={2} fillOpacity={0} />
+                                    <Area type="monotone" dataKey="pm1" stroke="#10b981" strokeWidth={2} fillOpacity={0} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

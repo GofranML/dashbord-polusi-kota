@@ -63,6 +63,7 @@ interface MapNode {
     lng: number;
     pm25: number;
     pm10?: number;
+    pm1?: number;
     mq135?: number;
     humidity?: number;
     pressure?: number;
@@ -184,7 +185,8 @@ export default function Welcome() {
         totalDevicesCount = 0,
         activeDevicesCount = 0,
         trendData = [],
-        alertsList = []
+        alertsList = [],
+        cityHighlights = []
     } = usePage().props as any;
 
     const [time, setTime] = useState(new Date());
@@ -261,6 +263,7 @@ export default function Welcome() {
         if (clusterNodes.length > 0) {
             const avgPm25 = clusterNodes.reduce((acc : number, n : MapNode) => acc + n.pm25, 0) / clusterNodes.length;
             const avgPm10 = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.pm10 || 0), 0) / clusterNodes.length;
+            const avgPm1 = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.pm1 || 0), 0) / clusterNodes.length;
             const avgMq135 = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.mq135 || 0), 0) / clusterNodes.length;
             const avgHumidity = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.humidity || 0), 0) / clusterNodes.length;
             const avgPressure = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.pressure || 0), 0) / clusterNodes.length;
@@ -280,6 +283,7 @@ export default function Welcome() {
                 lng: avgLng,
                 pm25: avgPm25,
                 pm10: avgPm10,
+                pm1: avgPm1,
                 mq135: avgMq135,
                 humidity: avgHumidity,
                 pressure: avgPressure,
@@ -481,7 +485,7 @@ export default function Welcome() {
                             
                             <div className="w-full h-full relative z-0">
                                 <MapContainer 
-                                    center={[-6.2088, 106.8456]} 
+                                    center={[-2.9909, 104.7566]} 
                                     zoom={13} 
                                     scrollWheelZoom={true}
                                     style={{ height: '600px', width: '100%', background: '#030816' }}
@@ -530,6 +534,10 @@ export default function Welcome() {
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-[10px] text-neutral-500 uppercase font-bold">Avg PM10:</span>
                                                                 <span className="text-[12px] font-black text-white">{cluster.pm10.toFixed(1)} <span className="text-[8px] text-neutral-600">µg/m³</span></span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-[10px] text-neutral-500 uppercase font-bold">Avg PM1:</span>
+                                                                <span className="text-[12px] font-black text-white">{cluster.pm1.toFixed(1)} <span className="text-[8px] text-neutral-600">µg/m³</span></span>
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-[10px] text-neutral-500 uppercase font-bold">MQ-135:</span>
@@ -611,6 +619,7 @@ export default function Welcome() {
                                         />
                                         <Area type="monotone" dataKey="pm25" stroke="#06b6d4" strokeWidth={3} fillOpacity={1} fill="url(#colorPmPublic)" />
                                         <Area type="monotone" dataKey="pm10" stroke="#a855f7" strokeWidth={2} fillOpacity={0} />
+                                        <Area type="monotone" dataKey="pm1" stroke="#10b981" strokeWidth={2} fillOpacity={0} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                              </div>
@@ -626,12 +635,12 @@ export default function Welcome() {
                                  City Highlights
                              </h3>
                              <div className="space-y-4">
-                                 {[
-                                     { label: 'Lokasi Udara Terbaik', val: 'Tebet Eco Park', color: 'text-green-400' },
-                                     { label: 'Polusi Tertinggi', val: 'Bundaran HI', color: 'text-red-400' },
+                                 {(cityHighlights.length > 0 ? cityHighlights : [
+                                     { label: 'Lokasi Udara Terbaik', val: 'Punti Kayu Forest', color: 'text-green-400' },
+                                     { label: 'Polusi Tertinggi', val: 'Plaju Refinery Zone', color: 'text-red-400' },
                                      { label: 'Rata-rata AQI Kota', val: '62 (Moderate)', color: 'text-yellow-400' },
-                                     { label: 'Status Cuaca', val: 'Cerah Berawan', color: 'text-cyan-400' },
-                                 ].map((s, i) => (
+                                     { label: 'Status Cuaca', val: 'Cerah', color: 'text-cyan-400' },
+                                 ]).map((s: any, i: number) => (
                                      <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-colors">
                                          <div className="space-y-1">
                                              <p className="text-[10px] text-neutral-500 uppercase font-black tracking-widest">{s.label}</p>

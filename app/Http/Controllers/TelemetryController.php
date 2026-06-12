@@ -43,6 +43,7 @@ class TelemetryController extends Controller
                     'region' => $device->region,
                     'pm25' => (double)$latest->pm25,
                     'pm10' => (double)$latest->pm10,
+                    'pm1' => (double)$latest->pm1,
                     'mq135' => (double)$latest->gas_index,
                     'humidity' => (double)$latest->humidity,
                     'pressure' => (double)$latest->air_pressure,
@@ -63,6 +64,37 @@ class TelemetryController extends Controller
         // Simple AQI logic based on US AQI for PM2.5
         $cityAqi = $this->calculateAqiFromPm25($avgPm25);
 
+        // Fetch all sensor data from the last 3 days for the interactive map
+        $threeDaysAgo = Carbon::now()->subDays(3);
+        $allSensorData = SensorData::with('device')
+            ->where('datetime', '>=', $threeDaysAgo)
+            ->orderBy('datetime', 'desc')
+            ->get();
+
+        $mapNodes = [];
+        foreach ($allSensorData as $log) {
+            if ($log->device) {
+                $mapNodes[] = [
+                    'id' => $log->id,
+                    'device_id' => $log->device_id,
+                    'name' => $log->device->name,
+                    'device_code' => $log->device->device_code,
+                    'lat' => (double)$log->device->latitude,
+                    'lng' => (double)$log->device->longitude,
+                    'region' => $log->device->region,
+                    'status' => $log->device->status,
+                    'pm25' => (double)$log->pm25,
+                    'pm10' => (double)$log->pm10,
+                    'pm1' => (double)$log->pm1,
+                    'mq135' => (double)$log->gas_index,
+                    'humidity' => (double)$log->humidity,
+                    'pressure' => (double)$log->air_pressure,
+                    'rain' => $log->rain_status,
+                    'timestamp' => $log->datetime->toIso8601String(),
+                ];
+            }
+        }
+        
         // Get recent alerts
         $alerts = Alert::with('device')
             ->orderBy('created_at', 'desc')
@@ -80,8 +112,8 @@ class TelemetryController extends Controller
                 ];
             });
 
-        // 24-hour chart trend data for Sudirman Tower A as default
-        $sudirman = Device::where('name', 'Sudirman Tower A')->first();
+        // 24-hour chart trend data for Kambang Iwak Park as default
+        $sudirman = Device::where('name', 'Kambang Iwak Park')->first();
         $trendData = [];
         if ($sudirman) {
             $trendData = SensorData::where('device_id', $sudirman->id)
@@ -99,18 +131,79 @@ class TelemetryController extends Controller
                 });
         }
 
+        // Calculate actual sensor averages from online devices
+        $humiditySum = 0;
+        $pressureSum = 0;
+        $pm10Sum = 0;
+        $pm1Sum = 0;
+        $mq135Sum = 0;
+        $rainyCount = 0;
+        $totalOnlineCount = 0;
+
+        foreach ($latestTelemetries as $telemetry) {
+            $dev = $devices->firstWhere('id', $telemetry['id']);
+            if ($dev && $dev->status === 'online') {
+                $humiditySum += $telemetry['humidity'];
+                $pressureSum += $telemetry['pressure'];
+                $pm10Sum += $telemetry['pm10'];
+                $pm1Sum += $telemetry['pm1'];
+                $mq135Sum += $telemetry['mq135'];
+                if ($telemetry['rain'] === 'Hujan' || $telemetry['rain'] === 'Gerimis') {
+                    $rainyCount++;
+                }
+                $totalOnlineCount++;
+            }
+        }
+
+        $avgHumidity = $totalOnlineCount > 0 ? round($humiditySum / $totalOnlineCount, 1) : 0;
+        $avgPressure = $totalOnlineCount > 0 ? round($pressureSum / $totalOnlineCount, 1) : 0;
+        $avgPm10 = $totalOnlineCount > 0 ? round($pm10Sum / $totalOnlineCount, 1) : 0;
+        $avgPm1 = $totalOnlineCount > 0 ? round($pm1Sum / $totalOnlineCount, 1) : 0;
+        $avgMq135 = $totalOnlineCount > 0 ? round($mq135Sum / $totalOnlineCount, 0) : 0;
+        $weatherStatus = ($totalOnlineCount > 0 && ($rainyCount / $totalOnlineCount) > 0.3) ? 'Hujan' : 'Cerah';
+
         // General sensor cards values
         $sensorCards = [
             ['title' => 'PM2.5', 'value' => $avgPm25, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm25), 'progress' => min(100, (int)($avgPm25 * 0.7)), 'battery' => 90, 'lastUpdate' => 'Just now'],
-            ['title' => 'PM10', 'value' => round($avgPm25 * 0.65, 1), 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm25 * 0.6), 'progress' => min(100, (int)($avgPm25 * 0.5)), 'battery' => 92, 'lastUpdate' => 'Just now'],
-            ['title' => 'MQ135', 'value' => round($avgPm25 * 2.8, 0), 'unit' => 'ppm', 'status' => $avgPm25 > 55 ? 'Tidak Sehat' : 'Baik', 'progress' => min(100, (int)($avgPm25 * 0.8)), 'battery' => 88, 'lastUpdate' => 'Just now'],
-            ['title' => 'Humidity', 'value' => 64.5, 'unit' => '%', 'status' => 'Baik', 'progress' => 64, 'battery' => 95, 'lastUpdate' => 'Just now'],
-            ['title' => 'Tekanan Udara', 'value' => 1011, 'unit' => 'hPa', 'status' => 'Baik', 'progress' => 50, 'battery' => 94, 'lastUpdate' => 'Just now'],
-            ['title' => 'Status Hujan', 'value' => 'Cerah', 'unit' => '', 'status' => 'Baik', 'progress' => 0, 'battery' => 90, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM10', 'value' => $avgPm10, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm10 * 0.6), 'progress' => min(100, (int)($avgPm10 * 0.5)), 'battery' => 92, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM1', 'value' => $avgPm1, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm1 * 1.5), 'progress' => min(100, (int)($avgPm1 * 1.5)), 'battery' => 91, 'lastUpdate' => 'Just now'],
+            ['title' => 'MQ135', 'value' => $avgMq135, 'unit' => 'ppm', 'status' => $avgPm25 > 55 ? 'Tidak Sehat' : 'Baik', 'progress' => min(100, (int)($avgPm25 * 0.8)), 'battery' => 88, 'lastUpdate' => 'Just now'],
+            ['title' => 'Humidity', 'value' => $avgHumidity, 'unit' => '%', 'status' => 'Baik', 'progress' => min(100, (int)$avgHumidity), 'battery' => 95, 'lastUpdate' => 'Just now'],
+            ['title' => 'Tekanan Udara', 'value' => $avgPressure, 'unit' => 'hPa', 'status' => 'Baik', 'progress' => 50, 'battery' => 94, 'lastUpdate' => 'Just now'],
+            ['title' => 'Status Hujan', 'value' => $weatherStatus, 'unit' => '', 'status' => 'Baik', 'progress' => 0, 'battery' => 90, 'lastUpdate' => 'Just now'],
+        ];
+
+        // Calculate city highlights dynamically
+        $bestDevice = null;
+        $worstDevice = null;
+        $lowestPm25 = 999999;
+        $highestPm25 = -1;
+
+        foreach ($latestTelemetries as $telemetry) {
+            $dev = $devices->firstWhere('id', $telemetry['id']);
+            if ($dev && $dev->status === 'online') {
+                if ($telemetry['pm25'] < $lowestPm25) {
+                    $lowestPm25 = $telemetry['pm25'];
+                    $bestDevice = $telemetry['name'];
+                }
+                if ($telemetry['pm25'] > $highestPm25) {
+                    $highestPm25 = $telemetry['pm25'];
+                    $worstDevice = $telemetry['name'];
+                }
+            }
+        }
+
+        $aqiStatusText = $this->getAqiStatusText($avgPm25);
+
+        $cityHighlights = [
+            ['label' => 'Lokasi Udara Terbaik', 'val' => $bestDevice ?? 'Tidak Ada Data', 'color' => 'text-green-400'],
+            ['label' => 'Polusi Tertinggi', 'val' => $worstDevice ?? 'Tidak Ada Data', 'color' => 'text-red-400'],
+            ['label' => 'Rata-rata AQI Kota', 'val' => "{$cityAqi} ({$aqiStatusText})", 'color' => 'text-yellow-400'],
+            ['label' => 'Status Cuaca', 'val' => $weatherStatus, 'color' => 'text-cyan-400'],
         ];
 
         return Inertia::render('welcome', [
-            'mapNodes' => $latestTelemetries,
+            'mapNodes' => $mapNodes,
             'sensorData' => $sensorCards,
             'cityAqi' => $cityAqi,
             'activeAlertsCount' => $activeAlerts,
@@ -118,44 +211,54 @@ class TelemetryController extends Controller
             'activeDevicesCount' => $activeDevices,
             'trendData' => $trendData,
             'alertsList' => $alerts,
+            'cityHighlights' => $cityHighlights,
         ]);
     }
 
     /**
      * Render the Full Maps view
      */
-    public function maps()
+    public function maps(Request $request)
     {
-        $devices = Device::all();
-        $latestTelemetries = [];
+        $startDate = $request->input('start_date', Carbon::now()->subDays(3)->format('Y-m-d'));
+        $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
 
-        foreach ($devices as $device) {
-            $latest = SensorData::where('device_id', $device->id)
-                ->orderBy('datetime', 'desc')
-                ->first();
+        $allSensorData = SensorData::with('device')
+            ->whereBetween('datetime', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ])
+            ->orderBy('datetime', 'desc')
+            ->get();
 
-            if ($latest) {
-                $latestTelemetries[] = [
-                    'id' => $device->id,
-                    'name' => $device->name,
-                    'device_code' => $device->device_code,
-                    'lat' => (double)$device->latitude,
-                    'lng' => (double)$device->longitude,
-                    'region' => $device->region,
-                    'status' => $device->status,
-                    'pm25' => (double)$latest->pm25,
-                    'pm10' => (double)$latest->pm10,
-                    'mq135' => (double)$latest->gas_index,
-                    'humidity' => (double)$latest->humidity,
-                    'pressure' => (double)$latest->air_pressure,
-                    'rain' => $latest->rain_status,
-                    'timestamp' => $latest->datetime->toIso8601String(),
+        $mapNodes = [];
+        foreach ($allSensorData as $log) {
+            if ($log->device) {
+                $mapNodes[] = [
+                    'id' => $log->id,
+                    'device_id' => $log->device_id,
+                    'name' => $log->device->name,
+                    'device_code' => $log->device->device_code,
+                    'lat' => (double)$log->device->latitude,
+                    'lng' => (double)$log->device->longitude,
+                    'region' => $log->device->region,
+                    'status' => $log->device->status,
+                    'pm25' => (double)$log->pm25,
+                    'pm10' => (double)$log->pm10,
+                    'pm1' => (double)$log->pm1,
+                    'mq135' => (double)$log->gas_index,
+                    'humidity' => (double)$log->humidity,
+                    'pressure' => (double)$log->air_pressure,
+                    'rain' => $log->rain_status,
+                    'timestamp' => $log->datetime->toIso8601String(),
                 ];
             }
         }
 
         return Inertia::render('maps', [
-            'mapNodes' => $latestTelemetries,
+            'mapNodes' => $mapNodes,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
         ]);
     }
 
@@ -185,6 +288,7 @@ class TelemetryController extends Controller
                 'time' => $log->datetime->format('Y-m-d H:i'),
                 'pm25' => $log->pm25,
                 'pm10' => $log->pm10,
+                'pm1' => $log->pm1,
                 'mq135' => $log->gas_index,
                 'humidity' => $log->humidity,
                 'pressure' => $log->air_pressure,
@@ -221,7 +325,7 @@ class TelemetryController extends Controller
             $file = fopen('php://output', 'w');
             
             // CSV Headers
-            fputcsv($file, ['Timestamp', 'PM2.5 (ug/m3)', 'PM10 (ug/m3)', 'MQ-135 (ppm)', 'Humidity (%)', 'Pressure (hPa)', 'Weather']);
+            fputcsv($file, ['Timestamp', 'PM2.5 (ug/m3)', 'PM10 (ug/m3)', 'PM1 (ug/m3)', 'MQ-135 (ppm)', 'Humidity (%)', 'Pressure (hPa)', 'Weather']);
 
             SensorData::where('device_id', $deviceId)
                 ->whereBetween('datetime', [
@@ -235,6 +339,7 @@ class TelemetryController extends Controller
                             $log->datetime->toDateTimeString(),
                             $log->pm25,
                             $log->pm10,
+                            $log->pm1,
                             $log->gas_index,
                             $log->humidity,
                             $log->air_pressure,
@@ -271,7 +376,7 @@ class TelemetryController extends Controller
             $file = fopen('php://output', 'w');
             
             // Excel-friendly Tab Separated Headers
-            fwrite($file, "Timestamp\tPM2.5 (ug/m3)\tPM10 (ug/m3)\tMQ-135 (ppm)\tHumidity (%)\tPressure (hPa)\tWeather\n");
+            fwrite($file, "Timestamp\tPM2.5 (ug/m3)\tPM10 (ug/m3)\tPM1 (ug/m3)\tMQ-135 (ppm)\tHumidity (%)\tPressure (hPa)\tWeather\n");
 
             SensorData::where('device_id', $deviceId)
                 ->whereBetween('datetime', [
@@ -282,10 +387,11 @@ class TelemetryController extends Controller
                 ->chunk(200, function ($logs) use ($file) {
                     foreach ($logs as $log) {
                         fwrite($file, sprintf(
-                            "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+                            "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
                             $log->datetime->toDateTimeString(),
                             $log->pm25,
                             $log->pm10,
+                            $log->pm1,
                             $log->gas_index,
                             $log->humidity,
                             $log->air_pressure,

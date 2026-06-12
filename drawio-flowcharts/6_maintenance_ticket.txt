@@ -1,0 +1,14 @@
+flowchart TD
+    Start([Kerusakan/Kebutuhan Kalibrasi Fisik]) --> CreateTicket[Admin/Operator Membuat Tiket Pemeliharaan]
+    CreateTicket --> Assign[Assign ke Teknisi, Tentukan Device, Deskripsi, & Jadwal]
+    Assign --> InitialStatus[Tiket berstatus pending]
+    
+    InitialStatus --> TechLogin[Teknisi Lapangan login & masuk panel /technician/tickets]
+    TechLogin --> ActionTech{Tindakan Teknisi}
+    
+    ActionTech -- Mulai Pekerjaan --> UpdateInProgress[Update Tiket status = in_progress]
+    UpdateInProgress --> RenderProgress[Status berubah di dashboard]
+    
+    ActionTech -- Selesai Pekerjaan --> FormComplete[Kirim formulir penyelesaian tiket]
+    FormComplete --> UpdateComplete[Update Tiket status = completed, completed_at = NOW]
+    UpdateComplete --> LogComplete[Catat histori pemeliharaan device]

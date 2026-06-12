@@ -1,0 +1,20 @@
+flowchart TD
+    Start([IoT Data Berhasil Disimpan]) --> CheckThreshold{Apakah nilai PM2.5, PM10, atau MQ-135 \n melebihi batas konfigurasi global?}
+    
+    CheckThreshold -- Tidak --> End([Selesai])
+    CheckThreshold -- Ya --> CheckExistingActive{Apakah alert aktif untuk parameter & device \n ini sudah ada?}
+    
+    CheckExistingActive -- Ya --> End
+    CheckExistingActive -- Tidak --> CreateAlert[Buat Alert Baru status = active]
+    CreateAlert --> Notify[Tampilkan Notifikasi Toast realtime via Sonner]
+    
+    Notify --> OperatorAction{Tindakan Operator/Admin di Alert Panel}
+    
+    OperatorAction -- Acknowledge --> UpdateAck[Update Alert status = acknowledged]
+    UpdateAck --> LogAck[Catat AuditLog: Alert Acknowledged oleh User] --> End
+    
+    OperatorAction -- Resolve --> RequestResolve[Kirim notes penyelesaian via Form]
+    RequestResolve --> ValidateNotes{Validasi notes wajib diisi}
+    ValidateNotes -- Gagal --> ShowValidation[Tampilkan error validasi] --> RequestResolve
+    ValidateNotes -- Sukses --> UpdateResolve[Update Alert status = resolved, resolved_by, resolved_at, notes]
+    UpdateResolve --> LogResolve[Catat AuditLog: Alert Resolved oleh User] --> End

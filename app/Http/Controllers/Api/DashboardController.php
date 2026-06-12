@@ -105,4 +105,21 @@ class DashboardController extends Controller
             })
         ]);
     }
+
+    public function allHistory(Request $request)
+    {
+        $query = SensorData::with('device')->orderBy('datetime', 'asc');
+
+        if ($request->has('device_id')) {
+            $query->where('device_id', $request->device_id);
+        }
+
+        $allData = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'count' => $allData->count(),
+            'data' => $allData
+        ]);
+    }
 }

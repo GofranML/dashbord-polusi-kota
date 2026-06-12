@@ -1,0 +1,19 @@
+flowchart TD
+    Start([Admin mengakses /dashboard/admin/devices]) --> Action{Tindakan Admin}
+    
+    Action -- Registrasi Device Baru --> FormCreate[Isi form: device_code, nama, lat, lng, region, status]
+    FormCreate --> ValidateCreate{Validasi input & keunikan device_code}
+    ValidateCreate -- Gagal --> ShowErrorCreate[Tampilkan Error Form]
+    ValidateCreate -- Sukses --> InsertDevice[Simpan Device Baru ke DB]
+    InsertDevice --> LogCreate[Catat AuditLog: Register New IoT Sensor] --> SuccessMsg[Tampilkan Pesan Sukses]
+    
+    Action -- Generate API Token --> TokenReq[Kirim request generate API Token]
+    TokenReq --> GenToken[Buat random token 60 karakter]
+    GenToken --> SaveToken[Simpan token di field api_token device]
+    SaveToken --> LogToken[Catat AuditLog: Device Token Generated] --> SuccessMsg
+    
+    Action -- Kalibrasi Sensor --> FormCalib[Kirim nilai calibration_factor \n Rentang: 0.1 s/d 5.0]
+    FormCalib --> ValidateCalib{Validasi numerik & rentang}
+    ValidateCalib -- Gagal --> ShowErrorCalib[Tampilkan Error Form]
+    ValidateCalib -- Sukses --> SaveCalib[Update calibration_factor device]
+    SaveCalib --> LogCalib[Catat AuditLog: Device Calibration adjusted] --> SuccessMsg
