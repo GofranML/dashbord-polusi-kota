@@ -26,8 +26,6 @@ class DeviceController extends Controller
                 'region' => $device->region,
                 'status' => $device->status, // online, offline, calibrating
                 'battery_voltage' => (double)$device->battery_voltage,
-                'signal_strength' => (int)$device->signal_strength,
-                'calibration_factor' => (double)$device->calibration_factor,
                 'last_seen_at' => $device->last_seen_at?->toIso8601String(),
                 'created_at' => $device->created_at->toIso8601String(),
             ];
@@ -60,8 +58,6 @@ class DeviceController extends Controller
             'region' => $request->region,
             'status' => $request->status,
             'battery_voltage' => 4.2, // standard new battery
-            'signal_strength' => -50,  // standard signal
-            'calibration_factor' => 1.0,
             'last_seen_at' => now(),
         ]);
 
@@ -131,31 +127,7 @@ class DeviceController extends Controller
         return redirect()->back()->with('success', 'Sensor node deleted.');
     }
 
-    /**
-     * Calibrate the sensor factor offset
-     */
-    public function calibrate(Request $request, $id)
-    {
-        $device = Device::findOrFail($id);
 
-        $request->validate([
-            'calibration_factor' => 'required|numeric|between:0.1,5.0',
-        ]);
-
-        $oldFactor = $device->calibration_factor;
-        $device->calibration_factor = $request->input('calibration_factor');
-        $device->save();
-
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'Device Calibration',
-            'description' => "Calibrated sensor {$device->device_code}. Factor offset adjusted from {$oldFactor} to {$device->calibration_factor}.",
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        return redirect()->back()->with('success', 'Calibration parameters saved successfully.');
-    }
 
     /**
      * Generate or regenerate the API token for the device

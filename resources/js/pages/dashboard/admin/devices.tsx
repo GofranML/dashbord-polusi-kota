@@ -28,8 +28,6 @@ interface DeviceRecord {
     region: string;
     status: 'online' | 'offline' | 'calibrating';
     battery_voltage: number;
-    signal_strength: number;
-    calibration_factor: number;
     api_token: string;
     last_seen_at: string | null;
     created_at: string;
@@ -42,10 +40,9 @@ const emptyDeviceForm = {
 export default function DevicesPage() {
     const { devicesList = [] } = usePage().props as any;
 
-    const [modal, setModal] = useState<'create' | 'edit' | 'delete' | 'calibrate' | 'token' | null>(null);
+    const [modal, setModal] = useState<'create' | 'edit' | 'delete' | 'token' | null>(null);
     const [selected, setSelected] = useState<DeviceRecord | null>(null);
     const [form, setForm] = useState({ ...emptyDeviceForm });
-    const [calibFactor, setCalibFactor] = useState(1.0);
 
     const openCreate = () => { setForm({ ...emptyDeviceForm }); setModal('create'); };
     const openEdit = (d: DeviceRecord) => {
@@ -54,7 +51,6 @@ export default function DevicesPage() {
         setModal('edit');
     };
     const openDelete = (d: DeviceRecord) => { setSelected(d); setModal('delete'); };
-    const openCalibrate = (d: DeviceRecord) => { setSelected(d); setCalibFactor(d.calibration_factor); setModal('calibrate'); };
     const openToken = (d: DeviceRecord) => { setSelected(d); setModal('token'); };
 
     const handleCreate = (e: React.FormEvent) => {
@@ -82,14 +78,7 @@ export default function DevicesPage() {
         });
     };
 
-    const handleCalibrate = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selected) return;
-        router.post(`/dashboard/admin/devices/${selected.id}/calibrate`, { calibration_factor: calibFactor }, {
-            onSuccess: () => { toast.success(`Faktor kalibrasi sensor diperbarui ke ${calibFactor}`); setModal(null); },
-            onError: () => toast.error('Gagal menyimpan kalibrasi.')
-        });
-    };
+
 
     const handleGenerateToken = () => {
         if (!selected) return;
@@ -171,14 +160,6 @@ export default function DevicesPage() {
                                     </p>
                                 </div>
                                 <div className="p-2 bg-white/5 rounded-lg">
-                                    <p className="text-neutral-600 font-bold uppercase">Signal</p>
-                                    <p className="font-mono font-black text-cyan-400">{device.signal_strength} dBm</p>
-                                </div>
-                                <div className="p-2 bg-white/5 rounded-lg">
-                                    <p className="text-neutral-600 font-bold uppercase">Calibration</p>
-                                    <p className="font-mono font-black text-purple-400">×{device.calibration_factor}</p>
-                                </div>
-                                <div className="p-2 bg-white/5 rounded-lg">
                                     <p className="text-neutral-600 font-bold uppercase">Region</p>
                                     <p className="font-bold text-neutral-300 truncate">{device.region}</p>
                                 </div>
@@ -195,12 +176,6 @@ export default function DevicesPage() {
                                     className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase rounded-lg hover:bg-emerald-500/20 transition-all"
                                 >
                                     <Key className="w-3 h-3" /> Token
-                                </button>
-                                <button
-                                    onClick={() => openCalibrate(device)}
-                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase rounded-lg hover:bg-purple-500/20 transition-all"
-                                >
-                                    <Sliders className="w-3 h-3" /> Calibrate
                                 </button>
                                 <button
                                     onClick={() => openEdit(device)}
@@ -281,52 +256,7 @@ export default function DevicesPage() {
                     </motion.div>
                 )}
 
-                {modal === 'calibrate' && selected && (
-                    <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
-                        onClick={(e) => e.target === e.currentTarget && setModal(null)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                            className="bg-[#0c1425] border border-purple-500/20 rounded-2xl p-8 w-full max-w-md shadow-2xl"
-                        >
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                                    <Sliders className="w-5 h-5 text-purple-400" /> Kalibrasi Sensor
-                                </h3>
-                                <button onClick={() => setModal(null)}><X className="w-5 h-5 text-neutral-500" /></button>
-                            </div>
-                            <p className="text-xs text-neutral-400 mb-6">{selected.device_code} · {selected.name}</p>
-                            <form onSubmit={handleCalibrate} className="space-y-6">
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-[10px] uppercase font-black tracking-widest text-neutral-400">Calibration Factor</label>
-                                        <span className="font-mono text-lg font-black text-purple-400">×{calibFactor.toFixed(2)}</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min={0.1}
-                                        max={5.0}
-                                        step={0.05}
-                                        value={calibFactor}
-                                        onChange={(e) => setCalibFactor(parseFloat(e.target.value))}
-                                        className="w-full accent-purple-500"
-                                    />
-                                    <div className="flex justify-between text-[8px] text-neutral-700 font-mono">
-                                        <span>×0.10 (low)</span><span>×5.00 (high)</span>
-                                    </div>
-                                    <p className="text-[9px] text-neutral-500 italic">
-                                        Faktor saat ini: ×{selected.calibration_factor}. Penyesuaian akan mempengaruhi semua pembacaan sensor ke depan.
-                                    </p>
-                                </div>
-                                <button type="submit" className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
-                                    Simpan Kalibrasi
-                                </button>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
+
 
                 {modal === 'delete' && selected && (
                     <motion.div

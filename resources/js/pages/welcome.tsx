@@ -69,6 +69,9 @@ interface MapNode {
     pressure?: number;
     rain?: string;
     timestamp: string;
+    fuzzy_score?: number;
+    fuzzy_label?: string;
+    fuzzy_color?: string;
 }
 // Distance calculation helper (Haversine)
 const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -210,6 +213,25 @@ export default function Welcome() {
     useEffect(() => {
         setMounted(true);
         const timer = setInterval(() => setTime(new Date()), 1000);
+
+        // Auto-select latest date with data if today has no data
+        const todayStr = getFormattedDate(0);
+        const yesterdayStr = getFormattedDate(1);
+        const date2Str = getFormattedDate(2);
+
+        const hasToday = mapNodes.some((n: any) => n.timestamp.startsWith(todayStr));
+        if (!hasToday) {
+            const hasYesterday = mapNodes.some((n: any) => n.timestamp.startsWith(yesterdayStr));
+            if (hasYesterday) {
+                setSelectedDate('Yesterday');
+            } else {
+                const hasDate2 = mapNodes.some((n: any) => n.timestamp.startsWith(date2Str));
+                if (hasDate2) {
+                    setSelectedDate(getFormattedLabel(2));
+                }
+            }
+        }
+
         return () => clearInterval(timer);
     }, []);
 
@@ -268,6 +290,9 @@ export default function Welcome() {
             const avgHumidity = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.humidity || 0), 0) / clusterNodes.length;
             const avgPressure = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.pressure || 0), 0) / clusterNodes.length;
             const rainStatus = clusterNodes.some((n : MapNode) => n.rain === 'Hujan' || n.rain === 'Gerimis') ? 'Hujan/Gerimis' : 'Cerah/Berawan';
+            const avgFuzzyScore = clusterNodes.reduce((acc : number, n : MapNode) => acc + (n.fuzzy_score || 0), 0) / clusterNodes.length;
+            const fuzzyLabel = avgFuzzyScore > 65 ? 'Bahaya' : avgFuzzyScore > 35 ? 'Waspada' : 'Aman';
+            const fuzzyColor = avgFuzzyScore > 65 ? 'text-red-400' : avgFuzzyScore > 35 ? 'text-yellow-400' : 'text-green-400';
 
             const avgLat = clusterNodes.reduce((acc : number, n : MapNode) => acc + n.lat, 0) / clusterNodes.length;
             const avgLng = clusterNodes.reduce((acc : number, n : MapNode) => acc + n.lng, 0) / clusterNodes.length;
@@ -288,6 +313,9 @@ export default function Welcome() {
                 humidity: avgHumidity,
                 pressure: avgPressure,
                 rain: rainStatus,
+                fuzzyScore: avgFuzzyScore,
+                fuzzyLabel: fuzzyLabel,
+                fuzzyColor: fuzzyColor,
                 count: clusterNodes.length,
                 areaName: clusterNodes.length > 1 ? (node.name.split(' ')[0] + ' Cluster') : node.name,
                 timeRange: minTime === maxTime ? minTime : `${minTime} - ${maxTime}`,
@@ -554,6 +582,12 @@ export default function Welcome() {
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-[10px] text-neutral-500 uppercase font-black">Cuaca:</span>
                                                                 <span className="text-[12px] font-black text-white">{cluster.rain}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center border-t border-white/10 pt-1.5 mt-1.5">
+                                                                <span className="text-[10px] text-neutral-400 uppercase font-black">Fuzzy Index:</span>
+                                                                <span className={cn("text-[12px] font-black", cluster.fuzzyColor)}>
+                                                                    {cluster.fuzzyScore.toFixed(1)} <span className="text-[8px] opacity-65">({cluster.fuzzyLabel})</span>
+                                                                </span>
                                                             </div>
                                                         </div>
                                                         <div className="flex justify-between items-center text-[8px] text-neutral-600 uppercase font-bold bg-white/5 p-1.5 rounded-lg">

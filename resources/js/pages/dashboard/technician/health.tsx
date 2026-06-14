@@ -24,8 +24,6 @@ interface DeviceHealth {
     name: string;
     status: 'online' | 'offline' | 'calibrating';
     battery_voltage: number;
-    signal_strength: number;
-    calibration_factor: number;
     last_seen_at: string | null;
     region: string;
     latitude: number;
@@ -43,14 +41,7 @@ export default function HealthPage() {
         d.region.toLowerCase().includes(search.toLowerCase())
     );
 
-    // Signal strength helpers
-    const getSignalQuality = (dbm: number) => {
-        if (dbm >= -50) return { label: 'Excellent', color: 'text-green-400', bars: 5 };
-        if (dbm >= -60) return { label: 'Good', color: 'text-cyan-400', bars: 4 };
-        if (dbm >= -70) return { label: 'Fair', color: 'text-yellow-400', bars: 3 };
-        if (dbm >= -80) return { label: 'Weak', color: 'text-orange-400', bars: 2 };
-        return { label: 'Poor', color: 'text-red-400', bars: 1 };
-    };
+
 
     const getBatteryPct = (v: number) => Math.min(100, Math.max(0, Math.round(((v - 3.0) / (4.2 - 3.0)) * 100)));
     const getBatteryColor = (v: number) => {
@@ -120,7 +111,6 @@ export default function HealthPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filtered.map((device: DeviceHealth, idx: number) => {
                     const cfg = statusConfig[device.status];
-                    const sig = getSignalQuality(device.signal_strength);
                     const battPct = getBatteryPct(device.battery_voltage);
                     const battColor = getBatteryColor(device.battery_voltage);
 
@@ -167,33 +157,7 @@ export default function HealthPage() {
                                     </div>
                                 </div>
 
-                                {/* Signal Strength */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 uppercase font-black">
-                                            <Wifi className="w-3.5 h-3.5" />
-                                            Signal
-                                        </div>
-                                        <span className={cn('font-mono font-black text-sm', sig.color)}>{device.signal_strength} dBm · {sig.label}</span>
-                                    </div>
-                                    {/* Signal bars visual */}
-                                    <div className="flex items-end gap-1 h-5">
-                                        {[1, 2, 3, 4, 5].map(bar => (
-                                            <div
-                                                key={bar}
-                                                className={cn(
-                                                    'flex-1 rounded-sm transition-all',
-                                                    bar <= sig.bars ? (
-                                                        sig.bars >= 4 ? 'bg-green-500' :
-                                                        sig.bars >= 3 ? 'bg-cyan-500' :
-                                                        sig.bars >= 2 ? 'bg-yellow-500' : 'bg-red-500'
-                                                    ) : 'bg-white/10'
-                                                )}
-                                                style={{ height: `${bar * 20}%` }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
+
 
                                 {/* Meta */}
                                 <div className="space-y-1 text-[9px] text-neutral-600">
@@ -204,9 +168,6 @@ export default function HealthPage() {
                                     <div className="flex items-center gap-1.5">
                                         <Clock className="w-2.5 h-2.5" />
                                         <span>Last seen: {device.last_seen_at ? new Date(device.last_seen_at).toLocaleString('id-ID') : 'Unknown'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-purple-400/70">
-                                        Calibration Factor: ×{device.calibration_factor}
                                     </div>
                                 </div>
 
@@ -264,13 +225,9 @@ export default function HealthPage() {
                             <p className="text-[9px] text-neutral-600">{qrTarget.region}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-[9px]">
-                            <div className="p-2 bg-white/5 rounded-lg">
+                            <div className="p-2 bg-white/5 rounded-lg col-span-2">
                                 <p className="text-neutral-600 uppercase font-bold">Battery</p>
                                 <p className={cn('font-mono font-black', getBatteryColor(qrTarget.battery_voltage))}>{qrTarget.battery_voltage}V</p>
-                            </div>
-                            <div className="p-2 bg-white/5 rounded-lg">
-                                <p className="text-neutral-600 uppercase font-bold">Signal</p>
-                                <p className={cn('font-mono font-black', getSignalQuality(qrTarget.signal_strength).color)}>{qrTarget.signal_strength} dBm</p>
                             </div>
                         </div>
                         <button

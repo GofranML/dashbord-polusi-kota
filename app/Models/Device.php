@@ -16,8 +16,6 @@ class Device extends Model
         'region',
         'status',
         'battery_voltage',
-        'signal_strength',
-        'calibration_factor',
         'last_seen_at',
     ];
 
@@ -29,8 +27,6 @@ class Device extends Model
         'latitude' => 'double',
         'longitude' => 'double',
         'battery_voltage' => 'double',
-        'signal_strength' => 'integer',
-        'calibration_factor' => 'double',
         'last_seen_at' => 'datetime',
     ];
 

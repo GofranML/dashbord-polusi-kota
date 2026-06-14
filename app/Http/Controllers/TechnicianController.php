@@ -127,8 +127,6 @@ class TechnicianController extends Controller
                 'name' => $device->name,
                 'status' => $device->status, // online, offline, calibrating
                 'battery_voltage' => (double)$device->battery_voltage,
-                'signal_strength' => (int)$device->signal_strength,
-                'calibration_factor' => (double)$device->calibration_factor,
                 'last_seen_at' => $device->last_seen_at?->toIso8601String(),
                 'region' => $device->region,
                 'latitude' => (double)$device->latitude,

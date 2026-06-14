@@ -29,7 +29,7 @@ export function AppSidebar() {
     // Define all possible menu items with real paths
     const allItems = {
         dashboard: { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
-        peta: { title: 'Peta Lokasi', href: '/maps', icon: MapIcon },
+        peta: { title: 'Peta Lokasi', href: '/maps?from=dashboard', icon: MapIcon },
         riwayat: { title: 'Riwayat Data', href: '/dashboard/history', icon: History },
         notif: { title: 'Alert & Notifikasi', href: '/dashboard/alerts', icon: Bell },
         device: { title: 'Device IoT CRUD', href: '/dashboard/admin/devices', icon: Cpu },

@@ -87,6 +87,9 @@ export default function Maps() {
     const [selectedTime, setSelectedTime] = useState('Live');
     const [currentZoom, setCurrentZoom] = useState(13);
 
+    const [backUrl, setBackUrl] = useState('/');
+    const [backLabel, setBackLabel] = useState('Back to Home');
+
     // Custom date range inputs
     const [customStartDate, setCustomStartDate] = useState(startDate || getFormattedDate(3));
     const [customEndDate, setCustomEndDate] = useState(endDate || getFormattedDate(0));
@@ -106,6 +109,29 @@ export default function Maps() {
         } else if (params.has('preset')) {
             setSelectedDate(params.get('preset') || 'Today');
             window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            // Auto-select latest date with data if today has no data and no custom range is provided
+            const todayStr = getFormattedDate(0);
+            const yesterdayStr = getFormattedDate(1);
+            const date2Str = getFormattedDate(2);
+            
+            const hasToday = mapNodes.some((n: any) => n.timestamp.startsWith(todayStr));
+            if (!hasToday) {
+                const hasYesterday = mapNodes.some((n: any) => n.timestamp.startsWith(yesterdayStr));
+                if (hasYesterday) {
+                    setSelectedDate('Yesterday');
+                } else {
+                    const hasDate2 = mapNodes.some((n: any) => n.timestamp.startsWith(date2Str));
+                    if (hasDate2) {
+                        setSelectedDate(getFormattedLabel(2));
+                    }
+                }
+            }
+        }
+
+        if (params.get('from') === 'dashboard') {
+            setBackUrl('/dashboard');
+            setBackLabel('Back to Dashboard');
         }
         
         return () => clearInterval(timer);
@@ -184,6 +210,9 @@ export default function Maps() {
             const avgHumidity = clusterNodes.reduce((acc, n) => acc + (n.humidity || 0), 0) / clusterNodes.length;
             const avgPressure = clusterNodes.reduce((acc, n) => acc + (n.pressure || 0), 0) / clusterNodes.length;
             const rainStatus = clusterNodes.some(n => n.rain === 'Hujan' || n.rain === 'Gerimis') ? 'Hujan/Gerimis' : 'Cerah/Berawan';
+            const avgFuzzyScore = clusterNodes.reduce((acc, n) => acc + (n.fuzzy_score || 0), 0) / clusterNodes.length;
+            const fuzzyLabel = avgFuzzyScore > 65 ? 'Bahaya' : avgFuzzyScore > 35 ? 'Waspada' : 'Aman';
+            const fuzzyColor = avgFuzzyScore > 65 ? 'text-red-400' : avgFuzzyScore > 35 ? 'text-yellow-400' : 'text-green-400';
 
             const avgLat = clusterNodes.reduce((acc, n) => acc + n.lat, 0) / clusterNodes.length;
             const avgLng = clusterNodes.reduce((acc, n) => acc + n.lng, 0) / clusterNodes.length;
@@ -204,6 +233,9 @@ export default function Maps() {
                 humidity: avgHumidity,
                 pressure: avgPressure,
                 rain: rainStatus,
+                fuzzyScore: avgFuzzyScore,
+                fuzzyLabel: fuzzyLabel,
+                fuzzyColor: fuzzyColor,
                 count: clusterNodes.length,
                 areaName: clusterNodes.length > 1 ? (node.name.split(' ')[0] + ' Cluster') : node.name,
                 timeRange: minTime === maxTime ? minTime : `${minTime} - ${maxTime}`,
@@ -232,9 +264,9 @@ export default function Maps() {
 
             {/* Top Navigation Overlay */}
             <div className="absolute top-4 left-20 z-[1000] flex gap-2">
-                <Link href="/" className="px-4 py-2 bg-black/60 backdrop-blur-xl rounded-xl border border-white/10 flex items-center gap-2 hover:bg-white/10 transition-colors">
+                <Link href={backUrl} className="px-4 py-2 bg-black/60 backdrop-blur-xl rounded-xl border border-white/10 flex items-center gap-2 hover:bg-white/10 transition-colors">
                     <ArrowLeft className="w-4 h-4 text-white" />
-                    <span className="text-sm font-black uppercase tracking-widest text-white">Back to Home</span>
+                    <span className="text-sm font-black uppercase tracking-widest text-white">{backLabel}</span>
                 </Link>
                 <div className="px-4 py-2 bg-black/60 backdrop-blur-xl rounded-xl border border-white/10 flex items-center gap-3">
                     <MapPin className="w-4 h-4 text-cyan-400" />
@@ -393,6 +425,12 @@ export default function Maps() {
                                             <div className="flex justify-between items-center">
                                                 <span className="text-[10px] text-neutral-500 uppercase font-black">Cuaca:</span>
                                                 <span className="text-[12px] font-black text-white">{cluster.rain}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-t border-white/10 pt-1.5 mt-1.5">
+                                                <span className="text-[10px] text-neutral-400 uppercase font-black">Fuzzy Index:</span>
+                                                <span className={`text-[12px] font-black ${cluster.fuzzyColor}`}>
+                                                    {cluster.fuzzyScore.toFixed(1)} <span className="text-[8px] opacity-65">({cluster.fuzzyLabel})</span>
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="flex justify-between items-center text-[8px] text-neutral-600 uppercase font-bold bg-white/5 p-1.5 rounded-lg">

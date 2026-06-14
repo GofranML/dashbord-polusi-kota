@@ -12,14 +12,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Hapus data duplikat yang sudah ada (simpan yang id paling kecil)
-        DB::statement("
-            DELETE s1 FROM sensor_data s1
-            INNER JOIN sensor_data s2
-            WHERE s1.id > s2.id
-              AND s1.device_id = s2.device_id
-              AND s1.datetime = s2.datetime
-        ");
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement("
+                DELETE FROM sensor_data
+                WHERE id NOT IN (
+                    SELECT MIN(id)
+                    FROM sensor_data
+                    GROUP BY device_id, datetime
+                )
+            ");
+        } else {
+            DB::statement("
+                DELETE s1 FROM sensor_data s1
+                INNER JOIN sensor_data s2
+                WHERE s1.id > s2.id
+                  AND s1.device_id = s2.device_id
+                  AND s1.datetime = s2.datetime
+            ");
+        }
 
         Schema::table('sensor_data', function (Blueprint $table) {
             $table->unique(['device_id', 'datetime'], 'sensor_data_device_datetime_unique');

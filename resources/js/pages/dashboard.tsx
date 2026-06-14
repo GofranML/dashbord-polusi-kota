@@ -101,13 +101,13 @@ export default function Dashboard() {
         : 'Cerah';
 
     const sensorData = [
-        { title: 'PM2.5 Rata-rata', value: avgPm25, unit: 'µg/m³', status: getAqiStatus(avgPm25), icon: Wind, progress: Math.min(100, Math.round(avgPm25 * 0.7)), battery: 100, lastUpdate: 'Just now' },
-        { title: 'PM10 Rata-rata', value: avgPm10, unit: 'µg/m³', status: getAqiStatus(avgPm10 * 0.6), icon: Wind, progress: Math.min(100, Math.round(avgPm10 * 0.5)), battery: 100, lastUpdate: 'Just now' },
-        { title: 'PM1 Rata-rata', value: avgPm1, unit: 'µg/m³', status: getAqiStatus(avgPm1 * 1.5), icon: Wind, progress: Math.min(100, Math.round(avgPm1 * 1.5)), battery: 100, lastUpdate: 'Just now' },
-        { title: 'MQ135 Rata-rata', value: avgMq135, unit: 'ppm', status: avgPm25 > 55 ? 'Tidak Sehat' as AQIStatus : 'Baik' as AQIStatus, icon: Activity, progress: Math.min(100, Math.round(avgPm25 * 0.8)), battery: 100, lastUpdate: 'Just now' },
-        { title: 'Humidity', value: avgHumidity, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: Math.min(100, Math.round(avgHumidity)), battery: 95, lastUpdate: 'Just now' },
-        { title: 'Tekanan Udara', value: avgPressure, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, battery: 92, lastUpdate: 'Just now' },
-        { title: 'Status Hujan', value: rainStatus, unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: rainStatus === 'Cerah' ? 0 : 70, battery: 90, lastUpdate: 'Just now' },
+        { title: 'PM2.5 Rata-rata', value: avgPm25, unit: 'µg/m³', status: getAqiStatus(avgPm25), icon: Wind, progress: Math.min(100, Math.round(avgPm25 * 0.7)), lastUpdate: 'Just now' },
+        { title: 'PM10 Rata-rata', value: avgPm10, unit: 'µg/m³', status: getAqiStatus(avgPm10 * 0.6), icon: Wind, progress: Math.min(100, Math.round(avgPm10 * 0.5)), lastUpdate: 'Just now' },
+        { title: 'PM1 Rata-rata', value: avgPm1, unit: 'µg/m³', status: getAqiStatus(avgPm1 * 1.5), icon: Wind, progress: Math.min(100, Math.round(avgPm1 * 1.5)), lastUpdate: 'Just now' },
+        { title: 'MQ135 Rata-rata', value: avgMq135, unit: 'ppm', status: avgPm25 > 55 ? 'Tidak Sehat' as AQIStatus : 'Baik' as AQIStatus, icon: Activity, progress: Math.min(100, Math.round(avgPm25 * 0.8)), lastUpdate: 'Just now' },
+        { title: 'Humidity', value: avgHumidity, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: Math.min(100, Math.round(avgHumidity)), lastUpdate: 'Just now' },
+        { title: 'Tekanan Udara', value: avgPressure, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, lastUpdate: 'Just now' },
+        { title: 'Status Hujan', value: rainStatus, unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: rainStatus === 'Cerah' ? 0 : 70, lastUpdate: 'Just now' },
     ];
 
     // RBAC Permissions
@@ -217,6 +217,7 @@ export default function Dashboard() {
                                         <th className="pb-5 px-4">Node ID</th>
                                         <th className="pb-5 px-4">Cluster</th>
                                         <th className="pb-5 px-4 text-right">Value (PM2.5)</th>
+                                        <th className="pb-5 px-4 text-center">Fuzzy Hazard Index</th>
                                         <th className="pb-5 px-4 text-center">Connection</th>
                                         <th className="pb-5 px-4 text-center">Status</th>
                                         <th className="pb-5 px-4"></th>
@@ -233,6 +234,15 @@ export default function Dashboard() {
                                                 </div>
                                             </td>
                                             <td className="py-5 px-4 text-right font-mono font-black">{telemetry.pm25} µg/m³</td>
+                                            <td className="py-5 px-4 text-center">
+                                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                                                    telemetry.fuzzy_label === 'Bahaya' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
+                                                    telemetry.fuzzy_label === 'Waspada' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' :
+                                                    'bg-green-500/10 border-green-500/20 text-green-400'
+                                                }`}>
+                                                    {telemetry.fuzzy_score}% ({telemetry.fuzzy_label})
+                                                </span>
+                                            </td>
                                             <td className="py-5 px-4 text-center">
                                                 <div className="flex items-center justify-center gap-1.5">
                                                     <Wifi className={cn("w-3 h-3", telemetry.status === 'online' ? 'text-green-500' : 'text-red-500')} />

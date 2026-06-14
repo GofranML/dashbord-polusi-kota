@@ -16,7 +16,7 @@ Route::get('/maps', [TelemetryController::class, 'maps'])->name('maps');
 Route::middleware(['auth', 'verified'])->group(function () {
     
     // Core Dashboard Route (passes real DB metrics)
-    Route::get('dashboard', function () {
+    Route::get('dashboard', function (\App\Services\FuzzyService $fuzzyService) {
         $devices = \App\Models\Device::all();
         $totalDevices = $devices->count();
         $activeDevices = $devices->where('status', 'online')->count();
@@ -28,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->orderBy('datetime', 'desc')
                 ->first();
             if ($latest) {
+                $fuzzyResult = $fuzzyService->calculateHazard($latest->pm25, $latest->gas_index);
                 $latestTelemetries[] = [
                     'id' => $device->id,
                     'device_code' => $device->device_code,
@@ -41,6 +42,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'pressure' => (double)$latest->air_pressure,
                     'rain' => $latest->rain_status,
                     'status' => $device->status,
+                    'fuzzy_score' => $fuzzyResult['score'],
+                    'fuzzy_label' => $fuzzyResult['label'],
+                    'fuzzy_color' => $fuzzyResult['color'],
                 ];
             }
         }
@@ -115,7 +119,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('dashboard/admin/devices', [DeviceController::class, 'store'])->name('dashboard.admin.devices.store');
     Route::post('dashboard/admin/devices/{id}/update', [DeviceController::class, 'update'])->name('dashboard.admin.devices.update');
     Route::delete('dashboard/admin/devices/{id}', [DeviceController::class, 'destroy'])->name('dashboard.admin.devices.delete');
-    Route::post('dashboard/admin/devices/{id}/calibrate', [DeviceController::class, 'calibrate'])->name('dashboard.admin.devices.calibrate');
+
     Route::post('dashboard/admin/devices/{id}/token', [DeviceController::class, 'generateToken'])->name('dashboard.admin.devices.token');
 
     Route::get('dashboard/admin/config', [AdminController::class, 'config'])->name('dashboard.admin.config');

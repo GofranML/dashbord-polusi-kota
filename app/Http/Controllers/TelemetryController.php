@@ -9,9 +9,16 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Response;
+use App\Services\FuzzyService;
 
 class TelemetryController extends Controller
 {
+    protected $fuzzyService;
+
+    public function __construct(FuzzyService $fuzzyService)
+    {
+        $this->fuzzyService = $fuzzyService;
+    }
     /**
      * Get welcome portal metrics (Public view)
      */
@@ -34,12 +41,13 @@ class TelemetryController extends Controller
                 ->first();
 
             if ($latest) {
+                $fuzzyResult = $this->fuzzyService->calculateHazard($latest->pm25, $latest->gas_index);
                 $latestTelemetries[] = [
                     'id' => $device->id,
                     'name' => $device->name,
                     'device_code' => $device->device_code,
-                    'lat' => (double)$device->latitude,
-                    'lng' => (double)$device->longitude,
+                    'lat' => (double)($latest->gps_lat ?? $device->latitude),
+                    'lng' => (double)($latest->gps_lng ?? $device->longitude),
                     'region' => $device->region,
                     'pm25' => (double)$latest->pm25,
                     'pm10' => (double)$latest->pm10,
@@ -49,6 +57,9 @@ class TelemetryController extends Controller
                     'pressure' => (double)$latest->air_pressure,
                     'rain' => $latest->rain_status,
                     'timestamp' => $latest->datetime->toIso8601String(),
+                    'fuzzy_score' => $fuzzyResult['score'],
+                    'fuzzy_label' => $fuzzyResult['label'],
+                    'fuzzy_color' => $fuzzyResult['color'],
                 ];
 
                 if ($device->status === 'online') {
@@ -74,13 +85,14 @@ class TelemetryController extends Controller
         $mapNodes = [];
         foreach ($allSensorData as $log) {
             if ($log->device) {
+                $fuzzyResult = $this->fuzzyService->calculateHazard($log->pm25, $log->gas_index);
                 $mapNodes[] = [
                     'id' => $log->id,
                     'device_id' => $log->device_id,
                     'name' => $log->device->name,
                     'device_code' => $log->device->device_code,
-                    'lat' => (double)$log->device->latitude,
-                    'lng' => (double)$log->device->longitude,
+                    'lat' => (double)($log->gps_lat ?? $log->device->latitude),
+                    'lng' => (double)($log->gps_lng ?? $log->device->longitude),
                     'region' => $log->device->region,
                     'status' => $log->device->status,
                     'pm25' => (double)$log->pm25,
@@ -91,6 +103,9 @@ class TelemetryController extends Controller
                     'pressure' => (double)$log->air_pressure,
                     'rain' => $log->rain_status,
                     'timestamp' => $log->datetime->toIso8601String(),
+                    'fuzzy_score' => $fuzzyResult['score'],
+                    'fuzzy_label' => $fuzzyResult['label'],
+                    'fuzzy_color' => $fuzzyResult['color'],
                 ];
             }
         }
@@ -234,13 +249,14 @@ class TelemetryController extends Controller
         $mapNodes = [];
         foreach ($allSensorData as $log) {
             if ($log->device) {
+                $fuzzyResult = $this->fuzzyService->calculateHazard($log->pm25, $log->gas_index);
                 $mapNodes[] = [
                     'id' => $log->id,
                     'device_id' => $log->device_id,
                     'name' => $log->device->name,
                     'device_code' => $log->device->device_code,
-                    'lat' => (double)$log->device->latitude,
-                    'lng' => (double)$log->device->longitude,
+                    'lat' => (double)($log->gps_lat ?? $log->device->latitude),
+                    'lng' => (double)($log->gps_lng ?? $log->device->longitude),
                     'region' => $log->device->region,
                     'status' => $log->device->status,
                     'pm25' => (double)$log->pm25,
@@ -251,6 +267,9 @@ class TelemetryController extends Controller
                     'pressure' => (double)$log->air_pressure,
                     'rain' => $log->rain_status,
                     'timestamp' => $log->datetime->toIso8601String(),
+                    'fuzzy_score' => $fuzzyResult['score'],
+                    'fuzzy_label' => $fuzzyResult['label'],
+                    'fuzzy_color' => $fuzzyResult['color'],
                 ];
             }
         }
