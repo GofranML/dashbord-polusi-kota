@@ -3,7 +3,7 @@ import { GlassCard } from './GlassCard';
 import { LucideIcon, Battery, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type AQIStatus = 'Baik' | 'Sedang' | 'Tidak Sehat' | 'Berbahaya' | 'Sangat Tidak Sehat';
+export type AQIStatus = 'Baik' | 'Memuaskan' | 'Sedang' | 'Rendah' | 'Sangat Rendah' | 'Kritis';
 
 interface SensorCardProps {
     title: string;
@@ -19,18 +19,20 @@ interface SensorCardProps {
 
 const statusColors = {
     'Baik': 'text-green-400',
+    'Memuaskan': 'text-cyan-400',
     'Sedang': 'text-yellow-400',
-    'Tidak Sehat': 'text-orange-400',
-    'Berbahaya': 'text-red-400',
-    'Sangat Tidak Sehat': 'text-red-400',
+    'Rendah': 'text-orange-400',
+    'Sangat Rendah': 'text-red-400',
+    'Kritis': 'text-purple-400',
 };
 
 const neonMap = {
     'Baik': 'green' as const,
+    'Memuaskan': 'cyan' as const,
     'Sedang': 'blue' as const,
-    'Tidak Sehat': 'orange' as const,
-    'Berbahaya': 'red' as const,
-    'Sangat Tidak Sehat': 'red' as const,
+    'Rendah': 'orange' as const,
+    'Sangat Rendah': 'red' as const,
+    'Kritis': 'purple' as const,
 };
 
 export function SensorCard({ 

@@ -41,18 +41,22 @@ const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => 
 };
 
 // Custom Icons for different pollution levels
-const createPulseIcon = (color: 'red' | 'green' | 'yellow' | 'cyan') => {
+const createPulseIcon = (color: 'red' | 'green' | 'yellow' | 'cyan' | 'orange' | 'purple') => {
     const colorClasses = {
         red: 'bg-red-500',
         green: 'bg-green-500',
         yellow: 'bg-yellow-500',
-        cyan: 'bg-cyan-500'
+        cyan: 'bg-cyan-500',
+        orange: 'bg-orange-500',
+        purple: 'bg-purple-500'
     };
     const pulseClasses = {
         red: 'bg-red-500/30',
         green: 'bg-green-500/30',
         yellow: 'bg-yellow-500/30',
-        cyan: 'bg-cyan-500/30'
+        cyan: 'bg-cyan-500/30',
+        orange: 'bg-orange-500/30',
+        purple: 'bg-purple-500/30'
     };
 
     return L.divIcon({
@@ -64,6 +68,43 @@ const createPulseIcon = (color: 'red' | 'green' | 'yellow' | 'cyan') => {
         iconSize: [30, 30],
         iconAnchor: [15, 15]
     });
+};
+
+const getAqiLabel = (pm25: number) => {
+    if (pm25 <= 30) return 'Baik';
+    if (pm25 <= 60) return 'Memuaskan';
+    if (pm25 <= 90) return 'Sedang';
+    if (pm25 <= 120) return 'Rendah';
+    if (pm25 <= 250) return 'Sangat Rendah';
+    return 'Kritis';
+};
+
+const getAqiColorName = (pm25: number) => {
+    if (pm25 <= 30) return 'green';
+    if (pm25 <= 60) return 'cyan';
+    if (pm25 <= 90) return 'yellow';
+    if (pm25 <= 120) return 'orange';
+    if (pm25 <= 250) return 'red';
+    return 'purple';
+};
+
+const getAqiHexColor = (pm25: number) => {
+    if (pm25 <= 30) return '#22c55e'; // Green
+    if (pm25 <= 60) return '#06b6d4'; // Cyan/Biru
+    if (pm25 <= 90) return '#eab308'; // Yellow
+    if (pm25 <= 120) return '#f97316'; // Orange
+    if (pm25 <= 250) return '#ef4444'; // Red
+    return '#a855f7'; // Purple
+};
+
+const getAqiBadgeClass = (pm25: number) => {
+    const color = getAqiColorName(pm25);
+    if (color === 'green') return 'bg-green-500/20 text-green-400';
+    if (color === 'cyan') return 'bg-cyan-500/20 text-cyan-400';
+    if (color === 'yellow') return 'bg-yellow-500/20 text-yellow-400';
+    if (color === 'orange') return 'bg-orange-500/20 text-orange-400';
+    if (color === 'red') return 'bg-red-500/20 text-red-400';
+    return 'bg-purple-500/20 text-purple-400';
 };
 
 const getFormattedDate = (daysAgo: number) => {
@@ -245,9 +286,7 @@ export default function Maps() {
     });
 
     const getColor = (pm: number) => {
-        if (pm <= 20) return '#22c55e'; // Green
-        if (pm <= 50) return '#eab308'; // Yellow
-        return '#ef4444'; // Red
+        return getAqiHexColor(pm);
     };
 
     if (!mounted) {
@@ -337,12 +376,18 @@ export default function Maps() {
                 )}
             </div>
 
-            {/* Bottom Info Overlay */}
             <div className="absolute bottom-6 left-6 z-[1000] flex gap-2">
-                {['Hijau (Aman)', 'Kuning (Sedang)', 'Merah (Bahaya)'].map((l, i) => (
+                {[
+                    { label: 'Baik', color: 'bg-green-500' },
+                    { label: 'Memuaskan', color: 'bg-cyan-500' },
+                    { label: 'Sedang', color: 'bg-yellow-500' },
+                    { label: 'Rendah', color: 'bg-orange-500' },
+                    { label: 'Sangat Rendah', color: 'bg-red-500' },
+                    { label: 'Kritis', color: 'bg-purple-500' }
+                ].map((l, i) => (
                     <div key={i} className="px-3 py-2 bg-black/60 backdrop-blur-sm rounded-xl border border-white/5 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-white">
-                        <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-green-500' : i === 1 ? 'bg-yellow-500' : 'bg-red-500'}`} />
-                        {l}
+                        <div className={`w-2 h-2 rounded-full ${l.color}`} />
+                        {l.label}
                     </div>
                 ))}
             </div>
@@ -382,7 +427,7 @@ export default function Maps() {
                             />
                             
                             <Marker position={[cluster.lat, cluster.lng]} icon={createPulseIcon(
-                                cluster.pm25 > 50 ? 'red' : cluster.pm25 > 20 ? 'yellow' : 'green'
+                                getAqiColorName(cluster.pm25)
                             )}>
                                 <Popup className="custom-popup">
                                     <div className="p-3 w-56 bg-[#020617] text-white rounded-lg">
@@ -391,10 +436,8 @@ export default function Maps() {
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">{cluster.areaName}</h4>
                                                 <p className="text-[8px] text-neutral-500 uppercase">{cluster.count} Nodes averaged</p>
                                             </div>
-                                            <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-                                                cluster.pm25 > 50 ? 'bg-red-500/20 text-red-500' : cluster.pm25 > 20 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'
-                                            }`}>
-                                                {cluster.pm25 > 50 ? 'High' : cluster.pm25 > 20 ? 'Moderate' : 'Good'}
+                                            <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${getAqiBadgeClass(cluster.pm25)}`}>
+                                                {getAqiLabel(cluster.pm25)}
                                             </div>
                                         </div>
                                         <div className="space-y-1.5 mb-3">

@@ -179,10 +179,10 @@ class TelemetryController extends Controller
 
         // General sensor cards values
         $sensorCards = [
-            ['title' => 'PM2.5', 'value' => $avgPm25, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm25), 'progress' => min(100, (int)($avgPm25 * 0.7)), 'battery' => 90, 'lastUpdate' => 'Just now'],
-            ['title' => 'PM10', 'value' => $avgPm10, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm10 * 0.6), 'progress' => min(100, (int)($avgPm10 * 0.5)), 'battery' => 92, 'lastUpdate' => 'Just now'],
-            ['title' => 'PM1', 'value' => $avgPm1, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm1 * 1.5), 'progress' => min(100, (int)($avgPm1 * 1.5)), 'battery' => 91, 'lastUpdate' => 'Just now'],
-            ['title' => 'MQ135', 'value' => $avgMq135, 'unit' => 'ppm', 'status' => $avgPm25 > 55 ? 'Tidak Sehat' : 'Baik', 'progress' => min(100, (int)($avgPm25 * 0.8)), 'battery' => 88, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM2.5', 'value' => $avgPm25, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm25), 'progress' => min(100, (int)($avgPm25 * 100 / 250)), 'battery' => 90, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM10', 'value' => $avgPm10, 'unit' => 'µg/m³', 'status' => $this->getPm10StatusText($avgPm10), 'progress' => min(100, (int)($avgPm10 * 100 / 430)), 'battery' => 92, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM1', 'value' => $avgPm1, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm1), 'progress' => min(100, (int)($avgPm1 * 100 / 250)), 'battery' => 91, 'lastUpdate' => 'Just now'],
+            ['title' => 'MQ135', 'value' => $avgMq135, 'unit' => 'ppm', 'status' => $avgPm25 > 90 ? 'Rendah' : 'Baik', 'progress' => min(100, (int)($avgPm25 * 0.8)), 'battery' => 88, 'lastUpdate' => 'Just now'],
             ['title' => 'Humidity', 'value' => $avgHumidity, 'unit' => '%', 'status' => 'Baik', 'progress' => min(100, (int)$avgHumidity), 'battery' => 95, 'lastUpdate' => 'Just now'],
             ['title' => 'Tekanan Udara', 'value' => $avgPressure, 'unit' => 'hPa', 'status' => 'Baik', 'progress' => 50, 'battery' => 94, 'lastUpdate' => 'Just now'],
             ['title' => 'Status Hujan', 'value' => $weatherStatus, 'unit' => '', 'status' => 'Baik', 'progress' => 0, 'battery' => 90, 'lastUpdate' => 'Just now'],
@@ -427,24 +427,38 @@ class TelemetryController extends Controller
 
     private function calculateAqiFromPm25($pm25)
     {
-        if ($pm25 <= 12.0) {
-            return round((50 - 0) / (12.0 - 0) * ($pm25 - 0) + 0);
-        } elseif ($pm25 <= 35.4) {
-            return round((100 - 51) / (35.4 - 12.1) * ($pm25 - 12.1) + 51);
-        } elseif ($pm25 <= 55.4) {
-            return round((150 - 101) / (55.4 - 35.5) * ($pm25 - 35.5) + 101);
-        } elseif ($pm25 <= 150.4) {
-            return round((200 - 151) / (150.4 - 55.5) * ($pm25 - 55.5) + 151);
+        if ($pm25 <= 30) {
+            return round((50 - 0) / (30 - 0) * ($pm25 - 0) + 0);
+        } elseif ($pm25 <= 60) {
+            return round((100 - 51) / (60 - 30) * ($pm25 - 30) + 51);
+        } elseif ($pm25 <= 90) {
+            return round((150 - 101) / (90 - 60) * ($pm25 - 60) + 101);
+        } elseif ($pm25 <= 120) {
+            return round((200 - 151) / (120 - 90) * ($pm25 - 90) + 151);
+        } elseif ($pm25 <= 250) {
+            return round((300 - 201) / (250 - 120) * ($pm25 - 120) + 201);
         } else {
-            return round((300 - 201) / (250.4 - 150.5) * ($pm25 - 150.5) + 201);
+            return round(min(500, (500 - 301) / (500 - 250) * ($pm25 - 250) + 301));
         }
     }
 
     private function getAqiStatusText($pm25)
     {
-        if ($pm25 <= 12.0) return 'Baik';
-        if ($pm25 <= 35.4) return 'Sedang';
-        if ($pm25 <= 55.4) return 'Tidak Sehat';
-        return 'Sangat Tidak Sehat';
+        if ($pm25 <= 30) return 'Baik';
+        if ($pm25 <= 60) return 'Memuaskan';
+        if ($pm25 <= 90) return 'Sedang';
+        if ($pm25 <= 120) return 'Rendah';
+        if ($pm25 <= 250) return 'Sangat Rendah';
+        return 'Kritis';
+    }
+
+    private function getPm10StatusText($pm10)
+    {
+        if ($pm10 <= 50) return 'Baik';
+        if ($pm10 <= 100) return 'Memuaskan';
+        if ($pm10 <= 250) return 'Sedang';
+        if ($pm10 <= 350) return 'Rendah';
+        if ($pm10 <= 430) return 'Sangat Rendah';
+        return 'Kritis';
     }
 }

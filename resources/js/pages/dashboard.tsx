@@ -84,10 +84,30 @@ export default function Dashboard() {
         : 0;
 
     const getAqiStatus = (pm25: number): AQIStatus => {
-        if (pm25 <= 12.0) return 'Baik';
-        if (pm25 <= 35.4) return 'Sedang';
-        if (pm25 <= 55.4) return 'Tidak Sehat';
-        return 'Sangat Tidak Sehat';
+        if (pm25 <= 30) return 'Baik';
+        if (pm25 <= 60) return 'Memuaskan';
+        if (pm25 <= 90) return 'Sedang';
+        if (pm25 <= 120) return 'Rendah';
+        if (pm25 <= 250) return 'Sangat Rendah';
+        return 'Kritis';
+    };
+
+    const getPm10Status = (pm10: number): AQIStatus => {
+        if (pm10 <= 50) return 'Baik';
+        if (pm10 <= 100) return 'Memuaskan';
+        if (pm10 <= 250) return 'Sedang';
+        if (pm10 <= 350) return 'Rendah';
+        if (pm10 <= 430) return 'Sangat Rendah';
+        return 'Kritis';
+    };
+
+    const getBadgeStyle = (status: AQIStatus) => {
+        if (status === 'Baik') return 'bg-green-500/10 text-green-400';
+        if (status === 'Memuaskan') return 'bg-cyan-500/10 text-cyan-400';
+        if (status === 'Sedang') return 'bg-yellow-500/10 text-yellow-400';
+        if (status === 'Rendah') return 'bg-orange-500/10 text-orange-400';
+        if (status === 'Sangat Rendah') return 'bg-red-500/10 text-red-400';
+        return 'bg-purple-500/10 text-purple-400';
     };
 
     const avgHumidity = onlineTelemetries.length > 0
@@ -101,10 +121,10 @@ export default function Dashboard() {
         : 'Cerah';
 
     const sensorData = [
-        { title: 'PM2.5 Rata-rata', value: avgPm25, unit: 'µg/m³', status: getAqiStatus(avgPm25), icon: Wind, progress: Math.min(100, Math.round(avgPm25 * 0.7)), lastUpdate: 'Just now' },
-        { title: 'PM10 Rata-rata', value: avgPm10, unit: 'µg/m³', status: getAqiStatus(avgPm10 * 0.6), icon: Wind, progress: Math.min(100, Math.round(avgPm10 * 0.5)), lastUpdate: 'Just now' },
-        { title: 'PM1 Rata-rata', value: avgPm1, unit: 'µg/m³', status: getAqiStatus(avgPm1 * 1.5), icon: Wind, progress: Math.min(100, Math.round(avgPm1 * 1.5)), lastUpdate: 'Just now' },
-        { title: 'MQ135 Rata-rata', value: avgMq135, unit: 'ppm', status: avgPm25 > 55 ? 'Tidak Sehat' as AQIStatus : 'Baik' as AQIStatus, icon: Activity, progress: Math.min(100, Math.round(avgPm25 * 0.8)), lastUpdate: 'Just now' },
+        { title: 'PM2.5 Rata-rata', value: avgPm25, unit: 'µg/m³', status: getAqiStatus(avgPm25), icon: Wind, progress: Math.min(100, Math.round(avgPm25 * 100 / 250)), lastUpdate: 'Just now' },
+        { title: 'PM10 Rata-rata', value: avgPm10, unit: 'µg/m³', status: getPm10Status(avgPm10), icon: Wind, progress: Math.min(100, Math.round(avgPm10 * 100 / 430)), lastUpdate: 'Just now' },
+        { title: 'PM1 Rata-rata', value: avgPm1, unit: 'µg/m³', status: getAqiStatus(avgPm1), icon: Wind, progress: Math.min(100, Math.round(avgPm1 * 100 / 250)), lastUpdate: 'Just now' },
+        { title: 'MQ135 Rata-rata', value: avgMq135, unit: 'ppm', status: avgPm25 > 90 ? 'Rendah' as AQIStatus : 'Baik' as AQIStatus, icon: Activity, progress: Math.min(100, Math.round(avgPm25 * 0.8)), lastUpdate: 'Just now' },
         { title: 'Humidity', value: avgHumidity, unit: '%', status: 'Baik' as AQIStatus, icon: Droplets, progress: Math.min(100, Math.round(avgHumidity)), lastUpdate: 'Just now' },
         { title: 'Tekanan Udara', value: avgPressure, unit: 'hPa', status: 'Baik' as AQIStatus, icon: Thermometer, progress: 50, lastUpdate: 'Just now' },
         { title: 'Status Hujan', value: rainStatus, unit: '', status: 'Baik' as AQIStatus, icon: CloudRain, progress: rainStatus === 'Cerah' ? 0 : 70, lastUpdate: 'Just now' },
@@ -252,10 +272,8 @@ export default function Dashboard() {
                                                 </div>
                                             </td>
                                             <td className="py-5 px-4 text-center">
-                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                                                    telemetry.pm25 > 55 ? 'bg-red-500/10 text-red-500' : telemetry.pm25 > 35 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'
-                                                }`}>
-                                                    {telemetry.pm25 > 55 ? 'Danger' : telemetry.pm25 > 35 ? 'Moderate' : 'Good'}
+                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${getBadgeStyle(getAqiStatus(telemetry.pm25))}`}>
+                                                    {getAqiStatus(telemetry.pm25)}
                                                 </span>
                                             </td>
                                             <td className="py-5 px-4 text-right">
