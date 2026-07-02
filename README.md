@@ -1,4 +1,4 @@
-# 🌐 Smart City Air Monitoring Dashboard
+# 🌐 PolluTrack - Air Quality Monitoring Dashboard
 
 <p align="center">
   <img src="https://img.shields.io/badge/Laravel-v13.7-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel Version" />
@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Leaflet-v1.9-199900?style=for-the-badge&logo=leaflet&logoColor=white" alt="Leaflet" />
 </p>
 
-**Smart City Air Monitoring Dashboard** adalah platform pemantauan kualitas udara kota pintar (*Smart City*) futuristik dengan estetika premium **Glassmorphism**. Dashboard ini mengintegrasikan data sensor IoT secara *real-time* dengan visualisasi GIS (*Geographic Information System*) interaktif berbasis peta digital dinamis.
+**PolluTrack** adalah platform pemantauan kualitas udara real-time futuristik dengan estetika premium **Glassmorphism**. Dashboard ini mengintegrasikan data sensor IoT secara *real-time* dengan visualisasi GIS (*Geographic Information System*) interaktif berbasis peta digital dinamis.
 
 Dirancang khusus untuk kebutuhan ruang kendali (*Command Center*), aplikasi ini menyajikan wawasan mendalam mengenai sebaran polutan, tren kualitas udara, status cuaca, hingga sistem deteksi dini (*Alerting*) otomatis di wilayah DKI Jakarta.
 
@@ -48,7 +48,7 @@ Dashboard memantau **6 parameter krusial** secara bersamaan untuk memberikan ana
 *   **Real-time Analytics Charts**: Visualisasi fluktuasi PM2.5 dan PM10 secara berkala menggunakan grafik garis responsif dari **Recharts**.
 *   **Fluid Micro-Animations**: Interaksi lembut dan transisi halus pada setiap card dan tombol menggunakan **Framer Motion**.
 
-### ⚠️ 5. Smart City Alerts & Highlights
+### ⚠️ 5. PolluTrack Alerts & Highlights
 *   **City Highlights Stats**: Panel ringkasan otomatis yang menampilkan wilayah dengan kualitas udara terbaik, lokasi dengan polusi tertinggi, serta rata-rata AQI kota.
 *   **Active Alert System**: Notifikasi instan (menggunakan **Sonner**) saat sensor mendeteksi kadar gas (MQ-135) atau partikulat (PM2.5) melebihi ambang batas aman.
 
@@ -205,4 +205,4 @@ php artisan view:cache
 
 ---
 
-*Developed for Smart City Command Center Environment - 2026*
+*Developed for PolluTrack Command Center Environment - 2026*

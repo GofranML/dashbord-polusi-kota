@@ -380,7 +380,7 @@ export default function Welcome() {
 
     return (
         <div className="min-h-screen bg-[#020617] text-white selection:bg-cyan-500/30 overflow-x-hidden">
-            <Head title="Smart City Air Monitoring - Public Portal" />
+            <Head title="PolluTrack - Air Quality Monitoring Portal" />
             <Toaster position="top-right" theme="dark" />
 
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
@@ -395,10 +395,10 @@ export default function Welcome() {
                         <Globe className="w-6 h-6 text-white group-hover:rotate-12 transition-transform" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-black tracking-tighter text-xl uppercase leading-none">SmartCity<span className="text-cyan-400">Air</span></span>
+                        <span className="font-black tracking-tighter text-xl uppercase leading-none">Pollu<span className="text-cyan-400">Track</span></span>
                         <div className="flex items-center gap-1.5 mt-0.5">
                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                             <span className="text-[8px] text-neutral-500 uppercase tracking-widest font-black">Public Command Center // Live</span>
+                             <span className="text-[8px] text-neutral-500 uppercase tracking-widest font-black">PolluTrack Public Portal // Live</span>
                         </div>
                     </div>
                 </div>
@@ -774,7 +774,7 @@ export default function Welcome() {
                      <div className="space-y-6">
                          <div className="flex items-center gap-2">
                              <div className="w-6 h-6 bg-white rounded-lg" />
-                             <span className="text-white font-black text-sm">SMARTCITY</span>
+                             <span className="text-white font-black text-sm">POLLUTRACK</span>
                          </div>
                          <p className="leading-loose">Optimasi lingkungan perkotaan melalui teknologi IoT dan analisis data realtime untuk kehidupan yang lebih baik.</p>
                      </div>
@@ -792,8 +792,8 @@ export default function Welcome() {
                      </div>
                      <div className="space-y-4">
                          <h4 className="text-white">Contact</h4>
-                         <p>Command Center: (021) 123-4567</p>
-                         <p>support@smartcity-air.gov</p>
+                         <p>PolluTrack Command Center: (021) 123-4567</p>
+                         <p>support@pollutrack.io</p>
                          <div className="flex gap-4 pt-2">
                              <Globe className="w-4 h-4" />
                              <Shield className="w-4 h-4" />
@@ -802,7 +802,7 @@ export default function Welcome() {
                      </div>
                  </div>
                  <div className="mt-16 text-center text-[8px] text-neutral-700 font-black uppercase tracking-[0.5em]">
-                     © 2026 Smart City Air Monitoring System // Department of Environment
+                     © 2026 PolluTrack Air Quality Monitoring System // Department of Environment
                  </div>
             </footer>
         </div>

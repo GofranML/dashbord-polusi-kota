@@ -299,7 +299,7 @@ export default function Maps() {
 
     return (
         <div className="w-screen h-screen bg-[#020617] text-white overflow-hidden relative">
-            <Head title="Full Map - Smart City Air Monitoring" />
+            <Head title="Full Map - PolluTrack Air Quality Monitoring" />
 
             {/* Top Navigation Overlay */}
             <div className="absolute top-4 left-20 z-[1000] flex gap-2">

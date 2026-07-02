@@ -86,7 +86,7 @@ export default function SecurityPage() {
                                 className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-black text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
                             >
                                 <Download className="w-4 h-4" />
-                                Download smartcity.sqlite
+                                Download pollutrack.sqlite
                             </Link>
                         </GlassCard>
                     </motion.div>

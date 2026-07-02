@@ -138,13 +138,13 @@ export default function Dashboard() {
 
     return (
         <div className="p-4 lg:p-10 space-y-8 bg-transparent">
-            <Head title={`Dashboard - ${userRole}`} />
+            <Head title={`PolluTrack - ${userRole}`} />
             <Toaster position="top-right" theme="dark" />
 
             {/* Header: Greeting & Action */}
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black uppercase tracking-tighter">Command Center</h1>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter">PolluTrack Command Center</h1>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Node Cluster: Alpha // </span>
                         <div className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[8px] font-black uppercase tracking-widest">
@@ -416,7 +416,7 @@ export default function Dashboard() {
 }
 
 Dashboard.layout = (page: React.ReactNode) => (
-    <AppLayout breadcrumbs={[{ title: 'Command Center', href: dashboard() }]}>
+    <AppLayout breadcrumbs={[{ title: 'PolluTrack', href: dashboard() }]}>
         {page}
     </AppLayout>
 );

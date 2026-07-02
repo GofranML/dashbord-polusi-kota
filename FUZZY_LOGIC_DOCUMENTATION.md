@@ -1,5 +1,5 @@
 # Dokumentasi Penerapan Logika Fuzzy (Fuzzy Logic)
-## Sistem Monitoring Kualitas Udara Smart City Palembang
+## Sistem Monitoring Kualitas Udara PolluTrack Palembang
 
 Dokumen ini menjelaskan rancangan, metodologi, dan detail teknis penerapan **Sistem Inferensi Fuzzy (Fuzzy Inference System - FIS)** metode **Mamdani** untuk menghitung **Fuzzy Air Hazard Index (FAHI)** / Indeks Bahaya Udara Fuzzy di dalam aplikasi dashboard monitoring polusi kota.
 

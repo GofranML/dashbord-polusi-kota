@@ -1,6 +1,6 @@
-# 📊 Flowchart Alur Program - Smart City Air Monitoring Dashboard
+# 📊 Flowchart Alur Program - PolluTrack
 
-Dokumen ini menjelaskan alur program, arsitektur, dan aliran data (*data flow*) pada aplikasi **Smart City Air Monitoring Dashboard**. Diagram dalam dokumen ini menggunakan format **Mermaid** yang dapat dirender secara visual pada editor Markdown modern.
+Dokumen ini menjelaskan alur program, arsitektur, dan aliran data (*data flow*) pada aplikasi **PolluTrack**. Diagram dalam dokumen ini menggunakan format **Mermaid** yang dapat dirender secara visual pada editor Markdown modern.
 
 ---
 

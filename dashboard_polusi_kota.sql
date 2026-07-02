@@ -68,7 +68,7 @@ CREATE TABLE `audit_logs`  (
 -- ----------------------------
 -- Records of audit_logs
 -- ----------------------------
-INSERT INTO `audit_logs` VALUES (1, 1, 'User Management', 'Created user account for operator@smartcity.com with Petugas Monitoring role.', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '2026-06-12 12:01:29', '2026-06-12 12:01:29');
+INSERT INTO `audit_logs` VALUES (1, 1, 'User Management', 'Created user account for operator@pollutrack.com with Petugas Monitoring role.', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '2026-06-12 12:01:29', '2026-06-12 12:01:29');
 INSERT INTO `audit_logs` VALUES (2, 1, 'Security', 'Database backup created and saved locally.', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '2026-06-12 12:01:29', '2026-06-12 12:01:29');
 INSERT INTO `audit_logs` VALUES (3, 2, 'Alert Resolution', 'Resolved breach alert on Kambang Iwak Park.', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', '2026-06-12 12:01:29', '2026-06-12 12:01:29');
 INSERT INTO `audit_logs` VALUES (4, 1, 'System Config Change', 'Updated custom thresholds: PM2.5=91, PM10=150, MQ-135=250', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-12 12:30:19', '2026-06-12 12:30:19');
@@ -2207,10 +2207,10 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES (1, 'Super Admin', 'admin@smartcity.com', 'Super Admin', 'active', '{\"theme\": \"dark\", \"widgets\": [\"telemetry\", \"alerts\", \"users\", \"devices\", \"analytics\", \"security\"], \"bookmarks\": [1, 5, 11]}', NULL, '$2y$12$cU/evExyQipziZOpxqfk/effQRalsYSia34W8vZxqifqlSMo6jPWG', NULL, NULL, NULL, NULL, '2026-06-12 12:01:28', '2026-06-12 12:01:28');
-INSERT INTO `users` VALUES (2, 'Petugas Monitoring', 'operator@smartcity.com', 'Petugas Monitoring', 'active', '{\"theme\": \"dark\", \"widgets\": [\"telemetry\", \"alerts\", \"analytics\"], \"bookmarks\": [1, 7]}', NULL, '$2y$12$IPUDioBazR3cE6lUjVK12.HvLz0t818MirDGVMJafKLoeRtjN0cLW', NULL, NULL, NULL, NULL, '2026-06-12 12:01:28', '2026-06-12 12:01:28');
-INSERT INTO `users` VALUES (3, 'Viewer / Operator', 'viewer@smartcity.com', 'Viewer / Operator', 'active', '{\"theme\": \"dark\", \"widgets\": [\"telemetry\", \"analytics\"], \"bookmarks\": [5]}', NULL, '$2y$12$YWV0NfiNCjuoxPpakHHlzuMz/5/2i8fsSdlnHxbV3v4W11GBaPMju', NULL, NULL, NULL, NULL, '2026-06-12 12:01:28', '2026-06-12 12:01:28');
-INSERT INTO `users` VALUES (4, 'Teknisi Lapangan', 'teknisi@smartcity.com', 'Teknisi Lapangan', 'active', '{\"theme\": \"dark\", \"widgets\": [\"tickets\", \"health\"], \"bookmarks\": [1, 5, 15]}', NULL, '$2y$12$tzsRMD.LYdCEHRYbYubUdOL4HtIFleYnXmvWCbGeMHAN/mq3jt02W', NULL, NULL, NULL, NULL, '2026-06-12 12:01:29', '2026-06-12 12:01:29');
-INSERT INTO `users` VALUES (5, 'Suspended Operator', 'suspended@smartcity.com', 'Petugas Monitoring', 'suspended', NULL, NULL, '$2y$12$PS793HUr8pM2RClffbOY8eS0bvWutZ3.BZZ1vK9oyudLheTz6iTxm', NULL, NULL, NULL, NULL, '2026-06-12 12:01:29', '2026-06-12 12:01:29');
+INSERT INTO `users` VALUES (1, 'Super Admin', 'admin@pollutrack.com', 'Super Admin', 'active', '{\"theme\": \"dark\", \"widgets\": [\"telemetry\", \"alerts\", \"users\", \"devices\", \"analytics\", \"security\"], \"bookmarks\": [1, 5, 11]}', NULL, '$2y$12$cU/evExyQipziZOpxqfk/effQRalsYSia34W8vZxqifqlSMo6jPWG', NULL, NULL, NULL, NULL, '2026-06-12 12:01:28', '2026-06-12 12:01:28');
+INSERT INTO `users` VALUES (2, 'Petugas Monitoring', 'operator@pollutrack.com', 'Petugas Monitoring', 'active', '{\"theme\": \"dark\", \"widgets\": [\"telemetry\", \"alerts\", \"analytics\"], \"bookmarks\": [1, 7]}', NULL, '$2y$12$IPUDioBazR3cE6lUjVK12.HvLz0t818MirDGVMJafKLoeRtjN0cLW', NULL, NULL, NULL, NULL, '2026-06-12 12:01:28', '2026-06-12 12:01:28');
+INSERT INTO `users` VALUES (3, 'Viewer / Operator', 'viewer@pollutrack.com', 'Viewer / Operator', 'active', '{\"theme\": \"dark\", \"widgets\": [\"telemetry\", \"analytics\"], \"bookmarks\": [5]}', NULL, '$2y$12$YWV0NfiNCjuoxPpakHHlzuMz/5/2i8fsSdlnHxbV3v4W11GBaPMju', NULL, NULL, NULL, NULL, '2026-06-12 12:01:28', '2026-06-12 12:01:28');
+INSERT INTO `users` VALUES (4, 'Teknisi Lapangan', 'teknisi@pollutrack.com', 'Teknisi Lapangan', 'active', '{\"theme\": \"dark\", \"widgets\": [\"tickets\", \"health\"], \"bookmarks\": [1, 5, 15]}', NULL, '$2y$12$tzsRMD.LYdCEHRYbYubUdOL4HtIFleYnXmvWCbGeMHAN/mq3jt02W', NULL, NULL, NULL, NULL, '2026-06-12 12:01:29', '2026-06-12 12:01:29');
+INSERT INTO `users` VALUES (5, 'Suspended Operator', 'suspended@pollutrack.com', 'Petugas Monitoring', 'suspended', NULL, NULL, '$2y$12$PS793HUr8pM2RClffbOY8eS0bvWutZ3.BZZ1vK9oyudLheTz6iTxm', NULL, NULL, NULL, NULL, '2026-06-12 12:01:29', '2026-06-12 12:01:29');
 
 SET FOREIGN_KEY_CHECKS = 1;

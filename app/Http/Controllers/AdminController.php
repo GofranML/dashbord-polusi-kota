@@ -157,7 +157,7 @@ class AdminController extends Controller
             'config' => [
                 'interval' => '1 hour',
                 'telegramToken' => '87654321:AAE-MOCKTOKENHERE',
-                'telegramChatId' => '@smartcity_air_alerts',
+                'telegramChatId' => '@pollutrack_alerts',
                 'whatsappWebhook' => 'https://api.whatsapp-mock.com/send',
                 'regions' => ['Ilir Barat', 'Ilir Timur', 'Seberang Ulu', 'Kalidoni', 'Kertapati', 'Plaju', 'Sukarami', 'Alang-Alang Lebar', 'Kemuning'],
             ]
@@ -251,7 +251,7 @@ class AdminController extends Controller
             'user_agent' => request()->userAgent(),
         ]);
 
-        return Response::download($dbPath, 'smartcity_backup_' . date('Y-m-d_H-i-s') . '.sqlite');
+        return Response::download($dbPath, 'pollutrack_backup_' . date('Y-m-d_H-i-s') . '.sqlite');
     }
 
     /**

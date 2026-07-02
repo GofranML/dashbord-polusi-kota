@@ -107,7 +107,7 @@ export default function DevicesPage() {
 
     return (
         <div className="p-4 lg:p-10 space-y-8 bg-transparent">
-            <Head title="Device IoT Management" />
+            <Head title="PolluTrack Device Management" />
             <Toaster position="top-right" theme="dark" />
 
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">

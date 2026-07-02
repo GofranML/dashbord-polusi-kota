@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         // 1. Create Core Users
         $admin = User::create([
             'name' => 'Super Admin',
-            'email' => 'admin@smartcity.com',
+            'email' => 'admin@pollutrack.com',
             'password' => Hash::make('password'),
             'role' => 'Super Admin',
             'status' => 'active',
@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
 
         $operator = User::create([
             'name' => 'Petugas Monitoring',
-            'email' => 'operator@smartcity.com',
+            'email' => 'operator@pollutrack.com',
             'password' => Hash::make('password'),
             'role' => 'Petugas Monitoring',
             'status' => 'active',
@@ -49,7 +49,7 @@ class DatabaseSeeder extends Seeder
 
         $viewer = User::create([
             'name' => 'Viewer / Operator',
-            'email' => 'viewer@smartcity.com',
+            'email' => 'viewer@pollutrack.com',
             'password' => Hash::make('password'),
             'role' => 'Viewer / Operator',
             'status' => 'active',
@@ -62,7 +62,7 @@ class DatabaseSeeder extends Seeder
 
         $technician = User::create([
             'name' => 'Teknisi Lapangan',
-            'email' => 'teknisi@smartcity.com',
+            'email' => 'teknisi@pollutrack.com',
             'password' => Hash::make('password'),
             'role' => 'Teknisi Lapangan',
             'status' => 'active',
@@ -76,7 +76,7 @@ class DatabaseSeeder extends Seeder
         // Seed a suspended user for testing
         User::create([
             'name' => 'Suspended Operator',
-            'email' => 'suspended@smartcity.com',
+            'email' => 'suspended@pollutrack.com',
             'password' => Hash::make('password'),
             'role' => 'Petugas Monitoring',
             'status' => 'suspended',
@@ -290,7 +290,7 @@ class DatabaseSeeder extends Seeder
         AuditLog::create([
             'user_id' => $admin->id,
             'action' => 'User Management',
-            'description' => 'Created user account for operator@smartcity.com with Petugas Monitoring role.',
+            'description' => 'Created user account for operator@pollutrack.com with Petugas Monitoring role.',
             'ip_address' => '127.0.0.1',
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         ]);

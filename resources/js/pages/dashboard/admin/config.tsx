@@ -22,7 +22,7 @@ export default function ConfigPage() {
         telegramToken: config.telegramToken ?? '',
         telegramChatId: config.telegramChatId ?? '',
         whatsappWebhook: config.whatsappWebhook ?? '',
-        emailRecipient: config.emailRecipient ?? 'admin@smartcity.go.id',
+        emailRecipient: config.emailRecipient ?? 'admin@pollutrack.gov.id',
     });
 
     const handleSave = (e: React.FormEvent) => {
@@ -150,7 +150,7 @@ export default function ConfigPage() {
                                     type="email"
                                     value={form.emailRecipient}
                                     onChange={(e) => setForm(prev => ({ ...prev, emailRecipient: e.target.value }))}
-                                    placeholder="admin@smartcity.go.id"
+                                    placeholder="admin@pollutrack.gov.id"
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-orange-500/50"
                                 />
                             </div>
