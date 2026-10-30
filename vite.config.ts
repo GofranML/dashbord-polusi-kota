@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import inertia from '@inertiajs/vite';
 import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import tailwindcss from '@tailwindcss/vite';
@@ -6,9 +7,18 @@ import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig } from 'vite';
 
+const hasPhp = (() => {
+    if (process.env.VERCEL || process.env.CI) return false;
+    try {
+        execSync('php -v', { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+})();
+
 export default defineConfig(({ command }) => {
     const isBuild = command === 'build';
-    const isVercel = Boolean(process.env.VERCEL || process.env.CI);
 
     return {
         server: {
@@ -35,13 +45,13 @@ export default defineConfig(({ command }) => {
                 },
             }),
             tailwindcss(),
-            ...(!isVercel && !isBuild
-                ? [
-                      wayfinder({
-                          formVariants: true,
-                      }),
-                  ]
-                : []),
+            wayfinder({
+                formVariants: true,
+                command:
+                    !isBuild && hasPhp
+                        ? 'php artisan wayfinder:generate'
+                        : 'node scripts/wayfinder.cjs',
+            }),
         ],
     };
 });
