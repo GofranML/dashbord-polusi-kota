@@ -213,7 +213,7 @@ Step 2: TelemetryController fetches:
         - All devices with latest sensor readings
         - 3-day historical sensor data
 Step 3: React component initializes:
-        - Leaflet map with CartoDB Dark theme
+        - Leaflet map with standard OpenStreetMap tiles (no API key)
         - Dynamic clustering engine (Leaflet.markercluster)
 Step 4: Render map with:
         - Clustered markers grouped by zoom level

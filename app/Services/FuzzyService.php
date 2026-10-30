@@ -51,9 +51,16 @@ class FuzzyService
      */
     private function triangle($x, $a, $b, $c)
     {
-        if ($x <= $a || $x >= $c) return 0.0;
-        if ($x == $b) return 1.0;
-        if ($x > $a && $x < $b) return ($x - $a) / ($b - $a);
+        if ($x <= $a || $x >= $c) {
+            return 0.0;
+        }
+        if ($x == $b) {
+            return 1.0;
+        }
+        if ($x > $a && $x < $b) {
+            return ($x - $a) / ($b - $a);
+        }
+
         return ($c - $x) / ($c - $b);
     }
 
@@ -62,9 +69,16 @@ class FuzzyService
      */
     private function trapezoid($x, $a, $b, $c, $d)
     {
-        if ($x <= $a || $x >= $d) return 0.0;
-        if ($x >= $b && $x <= $c) return 1.0;
-        if ($x > $a && $x < $b) return ($x - $a) / ($b - $a);
+        if ($x <= $a || $x >= $d) {
+            return 0.0;
+        }
+        if ($x >= $b && $x <= $c) {
+            return 1.0;
+        }
+        if ($x > $a && $x < $b) {
+            return ($x - $a) / ($b - $a);
+        }
+
         return ($d - $x) / ($d - $c);
     }
 
@@ -82,11 +96,11 @@ class FuzzyService
         $r1 = min($pm['good'], $mq['low']);        // Rule 1: Good & Low -> Low
         $r2 = min($pm['good'], $mq['medium']);     // Rule 2: Good & Medium -> Low
         $r3 = min($pm['good'], $mq['high']);       // Rule 3: Good & High -> Moderate
-        
+
         $r4 = min($pm['moderate'], $mq['low']);     // Rule 4: Moderate & Low -> Low
         $r5 = min($pm['moderate'], $mq['medium']);  // Rule 5: Moderate & Medium -> Moderate
         $r6 = min($pm['moderate'], $mq['high']);    // Rule 6: Moderate & High -> High
-        
+
         $r7 = min($pm['unhealthy'], $mq['low']);    // Rule 7: Unhealthy & Low -> Moderate
         $r8 = min($pm['unhealthy'], $mq['medium']); // Rule 8: Unhealthy & Medium -> High
         $r9 = min($pm['unhealthy'], $mq['high']);   // Rule 9: Unhealthy & High -> High
@@ -129,7 +143,7 @@ class FuzzyService
         return [
             'score' => $score,
             'label' => $label,
-            'color' => $color
+            'color' => $color,
         ];
     }
 }

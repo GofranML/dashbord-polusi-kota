@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Device;
 use App\Models\AuditLog;
+use App\Models\Device;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class DeviceController extends Controller
 {
@@ -21,11 +22,11 @@ class DeviceController extends Controller
                 'device_code' => $device->device_code,
                 'name' => $device->name,
                 'api_token' => $device->api_token,
-                'lat' => (double)$device->latitude,
-                'lng' => (double)$device->longitude,
+                'lat' => (float) $device->latitude,
+                'lng' => (float) $device->longitude,
                 'region' => $device->region,
                 'status' => $device->status, // online, offline, calibrating
-                'battery_voltage' => (double)$device->battery_voltage,
+                'battery_voltage' => (float) $device->battery_voltage,
                 'last_seen_at' => $device->last_seen_at?->toIso8601String(),
                 'created_at' => $device->created_at->toIso8601String(),
             ];
@@ -127,16 +128,14 @@ class DeviceController extends Controller
         return redirect()->back()->with('success', 'Sensor node deleted.');
     }
 
-
-
     /**
      * Generate or regenerate the API token for the device
      */
     public function generateToken($id)
     {
         $device = Device::findOrFail($id);
-        
-        $newToken = \Illuminate\Support\Str::random(60);
+
+        $newToken = Str::random(60);
         $device->api_token = $newToken;
         $device->save();
 

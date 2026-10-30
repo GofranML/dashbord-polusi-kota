@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Alert;
 use App\Models\Device;
 use App\Models\SensorData;
-use App\Models\Alert;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Response;
 use App\Services\FuzzyService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
+use Inertia\Inertia;
 
 class TelemetryController extends Controller
 {
@@ -19,6 +19,7 @@ class TelemetryController extends Controller
     {
         $this->fuzzyService = $fuzzyService;
     }
+
     /**
      * Get welcome portal metrics (Public view)
      */
@@ -27,7 +28,7 @@ class TelemetryController extends Controller
         $devices = Device::all();
         $totalDevices = $devices->count();
         $activeDevices = $devices->where('status', 'online')->count();
-        
+
         $activeAlerts = Alert::where('status', 'active')->count();
 
         // Get latest telemetry for each online/calibrating device
@@ -46,15 +47,15 @@ class TelemetryController extends Controller
                     'id' => $device->id,
                     'name' => $device->name,
                     'device_code' => $device->device_code,
-                    'lat' => (double)($latest->gps_lat ?? $device->latitude),
-                    'lng' => (double)($latest->gps_lng ?? $device->longitude),
+                    'lat' => (float) ($latest->gps_lat ?? $device->latitude),
+                    'lng' => (float) ($latest->gps_lng ?? $device->longitude),
                     'region' => $device->region,
-                    'pm25' => (double)$latest->pm25,
-                    'pm10' => (double)$latest->pm10,
-                    'pm1' => (double)$latest->pm1,
-                    'mq135' => (double)$latest->gas_index,
-                    'humidity' => (double)$latest->humidity,
-                    'pressure' => (double)$latest->air_pressure,
+                    'pm25' => (float) $latest->pm25,
+                    'pm10' => (float) $latest->pm10,
+                    'pm1' => (float) $latest->pm1,
+                    'mq135' => (float) $latest->gas_index,
+                    'humidity' => (float) $latest->humidity,
+                    'pressure' => (float) $latest->air_pressure,
                     'rain' => $latest->rain_status,
                     'timestamp' => $latest->datetime->toIso8601String(),
                     'fuzzy_score' => $fuzzyResult['score'],
@@ -71,7 +72,7 @@ class TelemetryController extends Controller
 
         // Calculate average city AQI based on PM2.5 (mock or simple index)
         $avgPm25 = $pm25Count > 0 ? round($pm25Sum / $pm25Count, 1) : 0;
-        
+
         // Simple AQI logic based on US AQI for PM2.5
         $cityAqi = $this->calculateAqiFromPm25($avgPm25);
 
@@ -91,16 +92,16 @@ class TelemetryController extends Controller
                     'device_id' => $log->device_id,
                     'name' => $log->device->name,
                     'device_code' => $log->device->device_code,
-                    'lat' => (double)($log->gps_lat ?? $log->device->latitude),
-                    'lng' => (double)($log->gps_lng ?? $log->device->longitude),
+                    'lat' => (float) ($log->gps_lat ?? $log->device->latitude),
+                    'lng' => (float) ($log->gps_lng ?? $log->device->longitude),
                     'region' => $log->device->region,
                     'status' => $log->device->status,
-                    'pm25' => (double)$log->pm25,
-                    'pm10' => (double)$log->pm10,
-                    'pm1' => (double)$log->pm1,
-                    'mq135' => (double)$log->gas_index,
-                    'humidity' => (double)$log->humidity,
-                    'pressure' => (double)$log->air_pressure,
+                    'pm25' => (float) $log->pm25,
+                    'pm10' => (float) $log->pm10,
+                    'pm1' => (float) $log->pm1,
+                    'mq135' => (float) $log->gas_index,
+                    'humidity' => (float) $log->humidity,
+                    'pressure' => (float) $log->air_pressure,
                     'rain' => $log->rain_status,
                     'timestamp' => $log->datetime->toIso8601String(),
                     'fuzzy_score' => $fuzzyResult['score'],
@@ -109,7 +110,7 @@ class TelemetryController extends Controller
                 ];
             }
         }
-        
+
         // Get recent alerts
         $alerts = Alert::with('device')
             ->orderBy('created_at', 'desc')
@@ -179,11 +180,11 @@ class TelemetryController extends Controller
 
         // General sensor cards values
         $sensorCards = [
-            ['title' => 'PM2.5', 'value' => $avgPm25, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm25), 'progress' => min(100, (int)($avgPm25 * 100 / 250)), 'battery' => 90, 'lastUpdate' => 'Just now'],
-            ['title' => 'PM10', 'value' => $avgPm10, 'unit' => 'µg/m³', 'status' => $this->getPm10StatusText($avgPm10), 'progress' => min(100, (int)($avgPm10 * 100 / 430)), 'battery' => 92, 'lastUpdate' => 'Just now'],
-            ['title' => 'PM1', 'value' => $avgPm1, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm1), 'progress' => min(100, (int)($avgPm1 * 100 / 250)), 'battery' => 91, 'lastUpdate' => 'Just now'],
-            ['title' => 'MQ135', 'value' => $avgMq135, 'unit' => 'ppm', 'status' => $avgPm25 > 90 ? 'Rendah' : 'Baik', 'progress' => min(100, (int)($avgPm25 * 0.8)), 'battery' => 88, 'lastUpdate' => 'Just now'],
-            ['title' => 'Humidity', 'value' => $avgHumidity, 'unit' => '%', 'status' => 'Baik', 'progress' => min(100, (int)$avgHumidity), 'battery' => 95, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM2.5', 'value' => $avgPm25, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm25), 'progress' => min(100, (int) ($avgPm25 * 100 / 250)), 'battery' => 90, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM10', 'value' => $avgPm10, 'unit' => 'µg/m³', 'status' => $this->getPm10StatusText($avgPm10), 'progress' => min(100, (int) ($avgPm10 * 100 / 430)), 'battery' => 92, 'lastUpdate' => 'Just now'],
+            ['title' => 'PM1', 'value' => $avgPm1, 'unit' => 'µg/m³', 'status' => $this->getAqiStatusText($avgPm1), 'progress' => min(100, (int) ($avgPm1 * 100 / 250)), 'battery' => 91, 'lastUpdate' => 'Just now'],
+            ['title' => 'MQ135', 'value' => $avgMq135, 'unit' => 'ppm', 'status' => $avgPm25 > 90 ? 'Rendah' : 'Baik', 'progress' => min(100, (int) ($avgPm25 * 0.8)), 'battery' => 88, 'lastUpdate' => 'Just now'],
+            ['title' => 'Humidity', 'value' => $avgHumidity, 'unit' => '%', 'status' => 'Baik', 'progress' => min(100, (int) $avgHumidity), 'battery' => 95, 'lastUpdate' => 'Just now'],
             ['title' => 'Tekanan Udara', 'value' => $avgPressure, 'unit' => 'hPa', 'status' => 'Baik', 'progress' => 50, 'battery' => 94, 'lastUpdate' => 'Just now'],
             ['title' => 'Status Hujan', 'value' => $weatherStatus, 'unit' => '', 'status' => 'Baik', 'progress' => 0, 'battery' => 90, 'lastUpdate' => 'Just now'],
         ];
@@ -241,7 +242,7 @@ class TelemetryController extends Controller
         $allSensorData = SensorData::with('device')
             ->whereBetween('datetime', [
                 Carbon::parse($startDate)->startOfDay(),
-                Carbon::parse($endDate)->endOfDay()
+                Carbon::parse($endDate)->endOfDay(),
             ])
             ->orderBy('datetime', 'desc')
             ->get();
@@ -255,16 +256,16 @@ class TelemetryController extends Controller
                     'device_id' => $log->device_id,
                     'name' => $log->device->name,
                     'device_code' => $log->device->device_code,
-                    'lat' => (double)($log->gps_lat ?? $log->device->latitude),
-                    'lng' => (double)($log->gps_lng ?? $log->device->longitude),
+                    'lat' => (float) ($log->gps_lat ?? $log->device->latitude),
+                    'lng' => (float) ($log->gps_lng ?? $log->device->longitude),
                     'region' => $log->device->region,
                     'status' => $log->device->status,
-                    'pm25' => (double)$log->pm25,
-                    'pm10' => (double)$log->pm10,
-                    'pm1' => (double)$log->pm1,
-                    'mq135' => (double)$log->gas_index,
-                    'humidity' => (double)$log->humidity,
-                    'pressure' => (double)$log->air_pressure,
+                    'pm25' => (float) $log->pm25,
+                    'pm10' => (float) $log->pm10,
+                    'pm1' => (float) $log->pm1,
+                    'mq135' => (float) $log->gas_index,
+                    'humidity' => (float) $log->humidity,
+                    'pressure' => (float) $log->air_pressure,
                     'rain' => $log->rain_status,
                     'timestamp' => $log->datetime->toIso8601String(),
                     'fuzzy_score' => $fuzzyResult['score'],
@@ -287,16 +288,16 @@ class TelemetryController extends Controller
     public function history(Request $request)
     {
         $devices = Device::all(['id', 'name', 'device_code']);
-        
+
         // Default filters
         $deviceId = $request->input('device_id', $devices->first()?->id);
         $startDate = $request->input('start_date', Carbon::now()->subDays(3)->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
-        
+
         $query = SensorData::where('device_id', $deviceId)
             ->whereBetween('datetime', [
                 Carbon::parse($startDate)->startOfDay(),
-                Carbon::parse($endDate)->endOfDay()
+                Carbon::parse($endDate)->endOfDay(),
             ])
             ->orderBy('datetime', 'asc');
 
@@ -317,7 +318,7 @@ class TelemetryController extends Controller
 
         return Inertia::render('dashboard/history', [
             'devices' => $devices,
-            'selectedDeviceId' => (int)$deviceId,
+            'selectedDeviceId' => (int) $deviceId,
             'startDate' => $startDate,
             'endDate' => $endDate,
             'chartData' => $chartData,
@@ -342,14 +343,14 @@ class TelemetryController extends Controller
 
         $callback = function () use ($deviceId, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
-            
+
             // CSV Headers
             fputcsv($file, ['Timestamp', 'PM2.5 (ug/m3)', 'PM10 (ug/m3)', 'PM1 (ug/m3)', 'MQ-135 (ppm)', 'Humidity (%)', 'Pressure (hPa)', 'Weather']);
 
             SensorData::where('device_id', $deviceId)
                 ->whereBetween('datetime', [
                     Carbon::parse($startDate)->startOfDay(),
-                    Carbon::parse($endDate)->endOfDay()
+                    Carbon::parse($endDate)->endOfDay(),
                 ])
                 ->orderBy('datetime', 'asc')
                 ->chunk(200, function ($logs) use ($file) {
@@ -393,14 +394,14 @@ class TelemetryController extends Controller
 
         $callback = function () use ($deviceId, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
-            
+
             // Excel-friendly Tab Separated Headers
             fwrite($file, "Timestamp\tPM2.5 (ug/m3)\tPM10 (ug/m3)\tPM1 (ug/m3)\tMQ-135 (ppm)\tHumidity (%)\tPressure (hPa)\tWeather\n");
 
             SensorData::where('device_id', $deviceId)
                 ->whereBetween('datetime', [
                     Carbon::parse($startDate)->startOfDay(),
-                    Carbon::parse($endDate)->endOfDay()
+                    Carbon::parse($endDate)->endOfDay(),
                 ])
                 ->orderBy('datetime', 'asc')
                 ->chunk(200, function ($logs) use ($file) {
@@ -444,21 +445,43 @@ class TelemetryController extends Controller
 
     private function getAqiStatusText($pm25)
     {
-        if ($pm25 <= 30) return 'Baik';
-        if ($pm25 <= 60) return 'Memuaskan';
-        if ($pm25 <= 90) return 'Sedang';
-        if ($pm25 <= 120) return 'Rendah';
-        if ($pm25 <= 250) return 'Sangat Rendah';
+        if ($pm25 <= 30) {
+            return 'Baik';
+        }
+        if ($pm25 <= 60) {
+            return 'Memuaskan';
+        }
+        if ($pm25 <= 90) {
+            return 'Sedang';
+        }
+        if ($pm25 <= 120) {
+            return 'Rendah';
+        }
+        if ($pm25 <= 250) {
+            return 'Sangat Rendah';
+        }
+
         return 'Kritis';
     }
 
     private function getPm10StatusText($pm10)
     {
-        if ($pm10 <= 50) return 'Baik';
-        if ($pm10 <= 100) return 'Memuaskan';
-        if ($pm10 <= 250) return 'Sedang';
-        if ($pm10 <= 350) return 'Rendah';
-        if ($pm10 <= 430) return 'Sangat Rendah';
+        if ($pm10 <= 50) {
+            return 'Baik';
+        }
+        if ($pm10 <= 100) {
+            return 'Memuaskan';
+        }
+        if ($pm10 <= 250) {
+            return 'Sedang';
+        }
+        if ($pm10 <= 350) {
+            return 'Rendah';
+        }
+        if ($pm10 <= 430) {
+            return 'Sangat Rendah';
+        }
+
         return 'Kritis';
     }
 }

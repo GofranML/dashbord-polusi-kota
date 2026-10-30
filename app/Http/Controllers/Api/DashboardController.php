@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Device;
 use App\Models\SensorData;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -23,13 +23,13 @@ class DashboardController extends Controller
                 ],
                 'latest_data' => SensorData::where('device_id', $device->id)
                     ->orderBy('datetime', 'desc')
-                    ->first()
+                    ->first(),
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $devices
+            'data' => $devices,
         ]);
     }
 
@@ -43,8 +43,8 @@ class DashboardController extends Controller
 
         if ($request->has('start_date') && $request->has('end_date')) {
             $query->whereBetween('datetime', [
-                $request->start_date . ' 00:00:00',
-                $request->end_date . ' 23:59:59'
+                $request->start_date.' 00:00:00',
+                $request->end_date.' 23:59:59',
             ]);
         }
 
@@ -52,7 +52,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $history
+            'data' => $history,
         ]);
     }
 
@@ -71,12 +71,12 @@ class DashboardController extends Controller
             'pm10_avg' => $query->avg('pm10'),
             'temperature_avg' => $query->avg('temperature'),
             'humidity_avg' => $query->avg('humidity'),
-            'total_readings' => $query->count()
+            'total_readings' => $query->count(),
         ];
 
         return response()->json([
             'success' => true,
-            'data' => $stats
+            'data' => $stats,
         ]);
     }
 
@@ -100,9 +100,9 @@ class DashboardController extends Controller
                     'name' => $device->name,
                     'status' => $device->status,
                     'last_seen_at' => $device->last_seen_at,
-                    'is_online' => $device->status === 'online'
+                    'is_online' => $device->status === 'online',
                 ];
-            })
+            }),
         ]);
     }
 
@@ -119,7 +119,7 @@ class DashboardController extends Controller
         return response()->json([
             'success' => true,
             'count' => $allData->count(),
-            'data' => $allData
+            'data' => $allData,
         ]);
     }
 }

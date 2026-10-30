@@ -22,11 +22,11 @@ export function GlassCard({ children, className, neonColor }: GlassCardProps) {
             className={cn(
                 'relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md transition-all duration-300 hover:bg-white/10',
                 neonColor && neonStyles[neonColor],
-                className
+                className,
             )}
         >
             {/* Glossy Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
             <div className="relative z-10">{children}</div>
         </div>
     );

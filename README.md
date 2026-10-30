@@ -61,7 +61,7 @@ Sistem dibangun menggunakan arsitektur modern berkinerja tinggi:
 *   **Backend & Router**: [Laravel v13.7](https://laravel.com) & [Inertia.js v3.0](https://inertiajs.com) (Menghubungkan Laravel dengan React tanpa API REST manual).
 *   **Frontend Library**: [React.js v19.2](https://react.dev) & [TypeScript v5.7](https://www.typescriptlang.org).
 *   **Styling & UI**: [Tailwind CSS v4.0](https://tailwindcss.com) & [Headless UI](https://headlessui.com) / [Radix UI primitives](https://www.radix-ui.com).
-*   **Maps & GIS**: [React Leaflet v5.0](https://react-leaflet.js.org) (OpenStreetMap dengan tema gelap premium dari *CartoDB Dark*).
+*   **Maps & GIS**: [React Leaflet v5.0](https://react-leaflet.js.org) dengan tile standar OpenStreetMap, tanpa API key.
 *   **Grafik**: [Recharts v3.8](https://recharts.org).
 *   **Animasi**: [Framer Motion v12.38](https://www.framer.com/motion/).
 *   **Notifikasi**: [Sonner](https://sonner.emilkowal.ski).

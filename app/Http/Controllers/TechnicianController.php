@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Device;
 use App\Models\MaintenanceTicket;
-use App\Models\AuditLog;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class TechnicianController extends Controller
 {
@@ -57,7 +58,7 @@ class TechnicianController extends Controller
         ]);
 
         // Default: Assign to the logged-in technician or standard technician
-        $techId = Auth::user()->role === 'Teknisi Lapangan' ? Auth::id() : \App\Models\User::where('role', 'Teknisi Lapangan')->first()?->id ?? Auth::id();
+        $techId = Auth::user()->role === 'Teknisi Lapangan' ? Auth::id() : User::where('role', 'Teknisi Lapangan')->first()?->id ?? Auth::id();
 
         $ticket = MaintenanceTicket::create([
             'device_id' => $request->device_id,
@@ -126,11 +127,11 @@ class TechnicianController extends Controller
                 'device_code' => $device->device_code,
                 'name' => $device->name,
                 'status' => $device->status, // online, offline, calibrating
-                'battery_voltage' => (double)$device->battery_voltage,
+                'battery_voltage' => (float) $device->battery_voltage,
                 'last_seen_at' => $device->last_seen_at?->toIso8601String(),
                 'region' => $device->region,
-                'latitude' => (double)$device->latitude,
-                'longitude' => (double)$device->longitude,
+                'latitude' => (float) $device->latitude,
+                'longitude' => (float) $device->longitude,
             ];
         });
 

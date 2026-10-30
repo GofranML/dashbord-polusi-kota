@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Alert;
 use App\Models\AuditLog;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\SystemConfig;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class AlertController extends Controller
 {
@@ -25,8 +26,8 @@ class AlertController extends Controller
                     'device_name' => $a->device->name,
                     'device_code' => $a->device->device_code,
                     'parameter' => $a->parameter,
-                    'value' => (double)$a->value,
-                    'threshold' => (double)$a->threshold,
+                    'value' => (float) $a->value,
+                    'threshold' => (float) $a->threshold,
                     'status' => $a->status, // active, acknowledged, resolved
                     'resolved_by_name' => $a->resolver?->name,
                     'resolved_at' => $a->resolved_at?->toIso8601String(),
@@ -35,11 +36,11 @@ class AlertController extends Controller
                 ];
             });
 
-        // Get current system configuration threshold settings (mocked or loaded)
+        // Get current system configuration threshold settings
         $thresholds = [
-            'pm25' => 100.0,
-            'pm10' => 150.0,
-            'mq135' => 250.0,
+            'pm25' => (float) SystemConfig::getValue('threshold_pm25', 100.0),
+            'pm10' => (float) SystemConfig::getValue('threshold_pm10', 150.0),
+            'mq135' => (float) SystemConfig::getValue('threshold_mq135', 250.0),
         ];
 
         return Inertia::render('dashboard/alerts', [
@@ -106,8 +107,12 @@ class AlertController extends Controller
             'mq135' => 'required|numeric|min:1',
         ]);
 
-        // In a real application, we would save this to a database config table.
-        // For this demonstration, we log the action and return success!
+        SystemConfig::setMany([
+            'threshold_pm25' => $request->pm25,
+            'threshold_pm10' => $request->pm10,
+            'threshold_mq135' => $request->mq135,
+        ]);
+
         AuditLog::create([
             'user_id' => Auth::id(),
             'action' => 'System Config Change',

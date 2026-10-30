@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -13,22 +13,22 @@ return new class extends Migration
     public function up(): void
     {
         if (DB::getDriverName() === 'sqlite') {
-            DB::statement("
+            DB::statement('
                 DELETE FROM sensor_data
                 WHERE id NOT IN (
                     SELECT MIN(id)
                     FROM sensor_data
                     GROUP BY device_id, datetime
                 )
-            ");
+            ');
         } else {
-            DB::statement("
+            DB::statement('
                 DELETE s1 FROM sensor_data s1
                 INNER JOIN sensor_data s2
                 WHERE s1.id > s2.id
                   AND s1.device_id = s2.device_id
                   AND s1.datetime = s2.datetime
-            ");
+            ');
         }
 
         Schema::table('sensor_data', function (Blueprint $table) {

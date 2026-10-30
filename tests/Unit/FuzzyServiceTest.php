@@ -2,8 +2,8 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
 use App\Services\FuzzyService;
+use Tests\TestCase;
 
 class FuzzyServiceTest extends TestCase
 {
@@ -12,7 +12,7 @@ class FuzzyServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->fuzzyService = new FuzzyService();
+        $this->fuzzyService = new FuzzyService;
     }
 
     /**

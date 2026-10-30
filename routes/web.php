@@ -1,12 +1,17 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
-use App\Http\Controllers\TelemetryController;
-use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\TechnicianController;
+use App\Http\Controllers\TelemetryController;
+use App\Models\Alert;
+use App\Models\Device;
+use App\Models\SensorData;
+use App\Models\User;
+use App\Services\FuzzyService;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Public Views
@@ -14,17 +19,17 @@ Route::get('/', [TelemetryController::class, 'welcome'])->name('home');
 Route::get('/maps', [TelemetryController::class, 'maps'])->name('maps');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    
+
     // Core Dashboard Route (passes real DB metrics)
-    Route::get('dashboard', function (\App\Services\FuzzyService $fuzzyService) {
-        $devices = \App\Models\Device::all();
+    Route::get('dashboard', function (FuzzyService $fuzzyService) {
+        $devices = Device::all();
         $totalDevices = $devices->count();
         $activeDevices = $devices->where('status', 'online')->count();
-        $activeAlerts = \App\Models\Alert::where('status', 'active')->count();
-        
+        $activeAlerts = Alert::where('status', 'active')->count();
+
         $latestTelemetries = [];
         foreach ($devices as $device) {
-            $latest = \App\Models\SensorData::where('device_id', $device->id)
+            $latest = SensorData::where('device_id', $device->id)
                 ->orderBy('datetime', 'desc')
                 ->first();
             if ($latest) {
@@ -34,12 +39,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'device_code' => $device->device_code,
                     'name' => $device->name,
                     'region' => $device->region,
-                    'pm25' => (double)$latest->pm25,
-                    'pm10' => (double)$latest->pm10,
-                    'pm1' => (double)$latest->pm1,
-                    'mq135' => (double)$latest->gas_index,
-                    'humidity' => (double)$latest->humidity,
-                    'pressure' => (double)$latest->air_pressure,
+                    'pm25' => (float) $latest->pm25,
+                    'pm10' => (float) $latest->pm10,
+                    'pm1' => (float) $latest->pm1,
+                    'mq135' => (float) $latest->gas_index,
+                    'humidity' => (float) $latest->humidity,
+                    'pressure' => (float) $latest->air_pressure,
                     'rain' => $latest->rain_status,
                     'status' => $device->status,
                     'fuzzy_score' => $fuzzyResult['score'],
@@ -53,24 +58,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $defaultDevice = $devices->first();
         $trendData = [];
         if ($defaultDevice) {
-            $trendData = \App\Models\SensorData::where('device_id', $defaultDevice->id)
-                ->where('datetime', '>=', \Carbon\Carbon::now()->subHours(24))
+            $trendData = SensorData::where('device_id', $defaultDevice->id)
+                ->where('datetime', '>=', Carbon::now()->subHours(24))
                 ->orderBy('datetime', 'asc')
                 ->get()
                 ->map(function ($log) {
                     return [
                         'time' => $log->datetime->format('H:i'),
-                        'pm25' => (double)$log->pm25,
-                        'pm10' => (double)$log->pm10,
-                        'pm1' => (double)$log->pm1,
-                        'mq135' => (double)$log->gas_index,
-                        'humidity' => (double)$log->humidity,
+                        'pm25' => (float) $log->pm25,
+                        'pm10' => (float) $log->pm10,
+                        'pm1' => (float) $log->pm1,
+                        'mq135' => (float) $log->gas_index,
+                        'humidity' => (float) $log->humidity,
                     ];
                 })->toArray();
         }
 
         // Fetch actual system users
-        $systemUsers = \App\Models\User::orderBy('name', 'asc')
+        $systemUsers = User::orderBy('name', 'asc')
             ->take(5)
             ->get()
             ->map(function ($u) {
@@ -124,6 +129,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('dashboard/admin/config', [AdminController::class, 'config'])->name('dashboard.admin.config');
     Route::post('dashboard/admin/config', [AdminController::class, 'updateConfig'])->name('dashboard.admin.config.update');
+    Route::post('dashboard/admin/config/send-telemetry', [AdminController::class, 'sendTelemetry'])->name('dashboard.admin.config.send-telemetry');
+    Route::post('dashboard/admin/config/detect-telegram-chat', [AdminController::class, 'detectTelegramChat'])->name('dashboard.admin.config.detect-telegram-chat');
 
     Route::get('dashboard/admin/security', [AdminController::class, 'security'])->name('dashboard.admin.security');
     Route::post('dashboard/admin/security/whitelist', [AdminController::class, 'updateIpWhitelist'])->name('dashboard.admin.security.whitelist');

@@ -7,7 +7,11 @@ export type User = {
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;
-    role: 'Super Admin' | 'Petugas Monitoring' | 'Viewer / Operator' | 'Teknisi Lapangan';
+    role:
+        | 'Super Admin'
+        | 'Petugas Monitoring'
+        | 'Viewer / Operator'
+        | 'Teknisi Lapangan';
     [key: string]: unknown;
 };
 

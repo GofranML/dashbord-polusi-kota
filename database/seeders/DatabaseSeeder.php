@@ -2,16 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Device;
-use App\Models\TelemetryLog;
-use App\Models\SensorData;
 use App\Models\Alert;
-use App\Models\MaintenanceTicket;
 use App\Models\AuditLog;
+use App\Models\Device;
+use App\Models\MaintenanceTicket;
+use App\Models\SensorData;
+use App\Models\TelemetryLog;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -30,8 +30,8 @@ class DatabaseSeeder extends Seeder
             'preferences' => [
                 'theme' => 'dark',
                 'widgets' => ['telemetry', 'alerts', 'users', 'devices', 'analytics', 'security'],
-                'bookmarks' => [1, 5, 11]
-            ]
+                'bookmarks' => [1, 5, 11],
+            ],
         ]);
 
         $operator = User::create([
@@ -43,8 +43,8 @@ class DatabaseSeeder extends Seeder
             'preferences' => [
                 'theme' => 'dark',
                 'widgets' => ['telemetry', 'alerts', 'analytics'],
-                'bookmarks' => [1, 7]
-            ]
+                'bookmarks' => [1, 7],
+            ],
         ]);
 
         $viewer = User::create([
@@ -56,8 +56,8 @@ class DatabaseSeeder extends Seeder
             'preferences' => [
                 'theme' => 'dark',
                 'widgets' => ['telemetry', 'analytics'],
-                'bookmarks' => [5]
-            ]
+                'bookmarks' => [5],
+            ],
         ]);
 
         $technician = User::create([
@@ -69,8 +69,8 @@ class DatabaseSeeder extends Seeder
             'preferences' => [
                 'theme' => 'dark',
                 'widgets' => ['tickets', 'health'],
-                'bookmarks' => [1, 5, 15]
-            ]
+                'bookmarks' => [1, 5, 15],
+            ],
         ]);
 
         // Seed a suspended user for testing
@@ -130,15 +130,15 @@ class DatabaseSeeder extends Seeder
         $now = Carbon::now();
         $telemetries = [];
         $sensorDataRecords = [];
-        
+
         // Loop over the last 3 days
         for ($day = 2; $day >= 0; $day--) {
             $date = Carbon::now()->subDays($day);
-            
+
             // For each hour in the day
             for ($hour = 0; $hour < 24; $hour++) {
                 $timestamp = Carbon::create($date->year, $date->month, $date->day, $hour, 0, 0);
-                
+
                 // Do not seed future records for today
                 if ($day == 0 && $timestamp->isAfter($now)) {
                     continue;
@@ -153,10 +153,10 @@ class DatabaseSeeder extends Seeder
                     // Define baseline characteristics based on region and station type
                     $isIndustrial = in_array($device->name, ['Plaju Refinery Zone', 'Boom Baru Port', 'Simpang Polda']);
                     $isPark = in_array($device->name, ['Punti Kayu Forest', 'Jakabaring Lake', 'Sultan Mahmud Badaruddin Airport']);
-                    
+
                     // Diurnal patterns (peaks at rush hour: 7-9 AM, 5-8 PM)
                     $isPeakHour = ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 20);
-                    
+
                     if ($isIndustrial) {
                         $pm25Base = $isPeakHour ? rand(110, 160) : rand(70, 110);
                         $pm10Base = $pm25Base * 0.65 + rand(-5, 5);
@@ -199,7 +199,7 @@ class DatabaseSeeder extends Seeder
                         'pm25' => round($pm25Base, 1),
                         'pm10' => round(max(5, $pm10Base), 1),
                         'pm1' => round($pm25Base * 0.45, 1),
-                        'gas_index' => (int)round($mq135Base, 0),
+                        'gas_index' => (int) round($mq135Base, 0),
                         'gps_lat' => $device->latitude,
                         'gps_lng' => $device->longitude,
                         'rain_status' => $weather,

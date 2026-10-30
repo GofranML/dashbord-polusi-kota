@@ -1,10 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\IotDataController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\IotDataController;
 use App\Http\Middleware\IotDeviceAuth;
+use Illuminate\Support\Facades\Route;
 
 // IoT Device routes
 Route::middleware([IotDeviceAuth::class, 'throttle:60,1'])->group(function () {

@@ -1,26 +1,34 @@
 import { Link, usePage } from '@inertiajs/react';
-import { 
-    LayoutGrid, 
-    Activity, 
-    Map as MapIcon, 
-    Database, 
-    BarChart3, 
-    History, 
-    Bell, 
-    Cpu, 
+import {
+    LayoutGrid,
+    Activity,
+    Map as MapIcon,
+    Database,
+    BarChart3,
+    History,
+    Bell,
+    Cpu,
     Users,
-    FileDown, 
+    FileDown,
     Settings,
     BookOpen,
-    FolderGit2
+    FolderGit2,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { NavItem } from '@/types';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+} from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import type { NavItem } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
@@ -28,17 +36,61 @@ export function AppSidebar() {
 
     // Define all possible menu items with real paths
     const allItems = {
-        dashboard: { title: 'PolluTrack', href: '/dashboard', icon: LayoutGrid },
-        peta: { title: 'Peta Lokasi', href: '/maps?from=dashboard', icon: MapIcon },
-        riwayat: { title: 'Riwayat Data', href: '/dashboard/history', icon: History },
-        notif: { title: 'Alert & Notifikasi', href: '/dashboard/alerts', icon: Bell },
-        device: { title: 'Device IoT CRUD', href: '/dashboard/admin/devices', icon: Cpu },
-        user: { title: 'Manajemen User', href: '/dashboard/admin/users', icon: Users },
-        config: { title: 'Konfigurasi Sistem', href: '/dashboard/admin/config', icon: Settings },
-        security: { title: 'Keamanan & Backup', href: '/dashboard/admin/security', icon: FileDown },
-        apiDocs: { title: 'API Documentation', href: '/dashboard/admin/api-docs', icon: BookOpen },
-        tickets: { title: 'Maintenance Tickets', href: '/dashboard/technician/tickets', icon: Activity },
-        health: { title: 'Device Health Status', href: '/dashboard/technician/health', icon: Database },
+        dashboard: {
+            title: 'PolluTrack',
+            href: '/dashboard',
+            icon: LayoutGrid,
+        },
+        peta: {
+            title: 'Peta Lokasi',
+            href: '/maps?from=dashboard',
+            icon: MapIcon,
+        },
+        riwayat: {
+            title: 'Riwayat Data',
+            href: '/dashboard/history',
+            icon: History,
+        },
+        notif: {
+            title: 'Alert & Notifikasi',
+            href: '/dashboard/alerts',
+            icon: Bell,
+        },
+        device: {
+            title: 'Device IoT CRUD',
+            href: '/dashboard/admin/devices',
+            icon: Cpu,
+        },
+        user: {
+            title: 'Manajemen User',
+            href: '/dashboard/admin/users',
+            icon: Users,
+        },
+        config: {
+            title: 'Konfigurasi Sistem',
+            href: '/dashboard/admin/config',
+            icon: Settings,
+        },
+        security: {
+            title: 'Keamanan & Backup',
+            href: '/dashboard/admin/security',
+            icon: FileDown,
+        },
+        apiDocs: {
+            title: 'API Documentation',
+            href: '/dashboard/admin/api-docs',
+            icon: BookOpen,
+        },
+        tickets: {
+            title: 'Maintenance Tickets',
+            href: '/dashboard/technician/tickets',
+            icon: Activity,
+        },
+        health: {
+            title: 'Device Health Status',
+            href: '/dashboard/technician/health',
+            icon: Database,
+        },
     };
 
     // Filter items based on role
@@ -51,21 +103,18 @@ export function AppSidebar() {
             allItems.dashboard,
             allItems.peta,
             allItems.riwayat,
-            allItems.notif
+            allItems.notif,
         ];
     } else if (userRole === 'Teknisi Lapangan') {
         mainNavItems = [
             allItems.dashboard,
             allItems.peta,
             allItems.tickets,
-            allItems.health
+            allItems.health,
         ];
-    } else { // Viewer / Operator
-        mainNavItems = [
-            allItems.dashboard,
-            allItems.peta,
-            allItems.riwayat
-        ];
+    } else {
+        // Viewer / Operator
+        mainNavItems = [allItems.dashboard, allItems.peta, allItems.riwayat];
     }
 
     const footerNavItems: NavItem[] = [
