@@ -6,33 +6,42 @@ import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
-    server: {
-        host: '0.0.0.0',
-        hmr: {
-            host: '10.215.148.54',
-        },
-        cors: true,
-    },
-    plugins: [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
-            refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
-        }),
-        inertia(),
-        react({
-            babel: {
-                plugins: ['babel-plugin-react-compiler'],
+export default defineConfig(({ command }) => {
+    const isBuild = command === 'build';
+    const isVercel = Boolean(process.env.VERCEL || process.env.CI);
+
+    return {
+        server: {
+            host: '0.0.0.0',
+            hmr: {
+                host: '10.215.148.54',
             },
-        }),
-        tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
-    ],
+            cors: true,
+        },
+        plugins: [
+            laravel({
+                input: ['resources/css/app.css', 'resources/js/app.tsx'],
+                refresh: true,
+                fonts: [
+                    bunny('Instrument Sans', {
+                        weights: [400, 500, 600],
+                    }),
+                ],
+            }),
+            inertia(),
+            react({
+                babel: {
+                    plugins: ['babel-plugin-react-compiler'],
+                },
+            }),
+            tailwindcss(),
+            ...(!isVercel && !isBuild
+                ? [
+                      wayfinder({
+                          formVariants: true,
+                      }),
+                  ]
+                : []),
+        ],
+    };
 });
