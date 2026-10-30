@@ -1,0 +1,93 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * This file is part of phpDocumentor.
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ *
+ * @link      http://phpdoc.org
+ */
+
+namespace phpDocumentor\Reflection\Types;
+
+use phpDocumentor\Reflection\Fqsen;
+use phpDocumentor\Reflection\PseudoTypes\ArrayShape;
+use phpDocumentor\Reflection\PseudoTypes\ArrayShapeItem;
+use phpDocumentor\Reflection\PseudoTypes\ObjectShape;
+use phpDocumentor\Reflection\PseudoTypes\ObjectShapeItem;
+use PHPUnit\Framework\TestCase;
+
+final class ArrayTest extends TestCase
+{
+    public function testCreateWithoutParams(): void
+    {
+        $type = new Array_();
+
+        $this->assertNull($type->getOriginalKeyType());
+        $this->assertNull($type->getOriginalValueType());
+        $this->assertEquals(new Compound([new String_(), new Integer()]), $type->getKeyType());
+        $this->assertEquals(new Mixed_(), $type->getValueType());
+    }
+
+    public function testCreateWithParams(): void
+    {
+        $valueType = new Object_(new Fqsen('\\phpDocumentor\\Foo\\Bar'));
+        $keyType = new Compound(
+            [
+                new String_(),
+                new Integer(),
+            ]
+        );
+
+        $type = new Array_($valueType, $keyType);
+
+        $this->assertSame($keyType, $type->getOriginalKeyType());
+        $this->assertSame($valueType, $type->getOriginalValueType());
+        $this->assertSame($keyType, $type->getKeyType());
+        $this->assertSame($valueType, $type->getValueType());
+    }
+
+    /**
+     * @dataProvider provideToStringData
+     */
+    public function testToString(Array_ $array, string $expectedString): void
+    {
+        $this->assertSame($expectedString, (string) $array);
+    }
+
+    /**
+     * @return array<string, array{Array_, string}>
+     */
+    public function provideToStringData(): array
+    {
+        return [
+            'simple array' => [new Array_(), 'array'],
+            'array of mixed' => [new Array_(new Mixed_()), 'mixed[]'],
+            'array of single type' => [new Array_(new String_()), 'string[]'],
+            'multidimensional array' => [new Array_(new Array_(new String_())), 'string[][]'],
+            'array of compound type' => [new Array_(new Compound([new Integer(), new String_()])), 'array<int|string>'],
+            'array with key type' => [new Array_(new String_(), new Integer()), 'array<int, string>'],
+            'array of array shapes' => [
+                new Array_(
+                    new ArrayShape(
+                        new ArrayShapeItem('foo', new String_(), false),
+                        new ArrayShapeItem('bar', new Integer(), false)
+                    )
+                ),
+                'array<array{foo: string, bar: int}>',
+            ],
+            'array of object shapes' => [
+                new Array_(
+                    new ObjectShape(
+                        new ObjectShapeItem('foo', new String_(), false),
+                        new ObjectShapeItem('bar', new Integer(), false)
+                    )
+                ),
+                'array<object{foo: string, bar: int}>',
+            ],
+        ];
+    }
+}

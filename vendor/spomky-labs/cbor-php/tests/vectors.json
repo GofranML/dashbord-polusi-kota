@@ -1,0 +1,326 @@
+[
+    {
+        "cbor": "AA==",
+        "hex": "00"
+    },
+    {
+        "cbor": "AQ==",
+        "hex": "01"
+    },
+    {
+        "cbor": "Cg==",
+        "hex": "0a"
+    },
+    {
+        "cbor": "Fw==",
+        "hex": "17"
+    },
+    {
+        "cbor": "GBg=",
+        "hex": "1818"
+    },
+    {
+        "cbor": "GBk=",
+        "hex": "1819"
+    },
+    {
+        "cbor": "GGQ=",
+        "hex": "1864"
+    },
+    {
+        "cbor": "GQPo",
+        "hex": "1903e8"
+    },
+    {
+        "cbor": "GgAPQkA=",
+        "hex": "1a000f4240"
+    },
+    {
+        "cbor": "GwAAAOjUpRAA",
+        "hex": "1b000000e8d4a51000"
+    },
+    {
+        "cbor": "G///////////",
+        "hex": "1bffffffffffffffff"
+    },
+    {
+        "cbor": "wkkBAAAAAAAAAAA=",
+        "hex": "c249010000000000000000"
+    },
+    {
+        "cbor": "O///////////",
+        "hex": "3bffffffffffffffff"
+    },
+    {
+        "cbor": "w0kBAAAAAAAAAAA=",
+        "hex": "c349010000000000000000"
+    },
+    {
+        "cbor": "IA==",
+        "hex": "20"
+    },
+    {
+        "cbor": "KQ==",
+        "hex": "29"
+    },
+    {
+        "cbor": "OGM=",
+        "hex": "3863"
+    },
+    {
+        "cbor": "OQPn",
+        "hex": "3903e7"
+    },
+    {
+        "cbor": "+QAA",
+        "hex": "f90000"
+    },
+    {
+        "cbor": "+YAA",
+        "hex": "f98000"
+    },
+    {
+        "cbor": "+TwA",
+        "hex": "f93c00"
+    },
+    {
+        "cbor": "+z/xmZmZmZma",
+        "hex": "fb3ff199999999999a"
+    },
+    {
+        "cbor": "+T4A",
+        "hex": "f93e00"
+    },
+    {
+        "cbor": "+Xv/",
+        "hex": "f97bff"
+    },
+    {
+        "cbor": "+kfDUAA=",
+        "hex": "fa47c35000"
+    },
+    {
+        "cbor": "+n9///8=",
+        "hex": "fa7f7fffff"
+    },
+    {
+        "cbor": "+3435DyIAHWc",
+        "hex": "fb7e37e43c8800759c"
+    },
+    {
+        "cbor": "+QAB",
+        "hex": "f90001"
+    },
+    {
+        "cbor": "+QQA",
+        "hex": "f90400"
+    },
+    {
+        "cbor": "+cQA",
+        "hex": "f9c400"
+    },
+    {
+        "cbor": "+8AQZmZmZmZm",
+        "hex": "fbc010666666666666"
+    },
+    {
+        "cbor": "+XwA",
+        "hex": "f97c00"
+    },
+    {
+        "cbor": "+X4A",
+        "hex": "f97e00"
+    },
+    {
+        "cbor": "+fwA",
+        "hex": "f9fc00"
+    },
+    {
+        "cbor": "+n+AAAA=",
+        "hex": "fa7f800000"
+    },
+    {
+        "cbor": "+n/AAAA=",
+        "hex": "fa7fc00000"
+    },
+    {
+        "cbor": "+v+AAAA=",
+        "hex": "faff800000"
+    },
+    {
+        "cbor": "+3/wAAAAAAAA",
+        "hex": "fb7ff0000000000000"
+    },
+    {
+        "cbor": "+3/4AAAAAAAA",
+        "hex": "fb7ff8000000000000"
+    },
+    {
+        "cbor": "+//wAAAAAAAA",
+        "hex": "fbfff0000000000000"
+    },
+    {
+        "cbor": "9A==",
+        "hex": "f4"
+    },
+    {
+        "cbor": "9Q==",
+        "hex": "f5"
+    },
+    {
+        "cbor": "9g==",
+        "hex": "f6"
+    },
+    {
+        "cbor": "9w==",
+        "hex": "f7"
+    },
+    {
+        "cbor": "8A==",
+        "hex": "f0"
+    },
+    {
+        "cbor": "+P8=",
+        "hex": "f8ff"
+    },
+    {
+        "cbor": "wHQyMDEzLTAzLTIxVDIwOjA0OjAwWg==",
+        "hex": "c074323031332d30332d32315432303a30343a30305a"
+    },
+    {
+        "cbor": "wRpRS2ew",
+        "hex": "c11a514b67b0"
+    },
+    {
+        "cbor": "wftB1FLZ7CAAAA==",
+        "hex": "c1fb41d452d9ec200000"
+    },
+    {
+        "cbor": "10QBAgME",
+        "hex": "d74401020304"
+    },
+    {
+        "cbor": "2BhFZElFVEY=",
+        "hex": "d818456449455446"
+    },
+    {
+        "cbor": "2CB2aHR0cDovL3d3dy5leGFtcGxlLmNvbQ==",
+        "hex": "d82076687474703a2f2f7777772e6578616d706c652e636f6d"
+    },
+    {
+        "cbor": "QA==",
+        "hex": "40"
+    },
+    {
+        "cbor": "RAECAwQ=",
+        "hex": "4401020304"
+    },
+    {
+        "cbor": "YA==",
+        "hex": "60"
+    },
+    {
+        "cbor": "YWE=",
+        "hex": "6161"
+    },
+    {
+        "cbor": "ZElFVEY=",
+        "hex": "6449455446"
+    },
+    {
+        "cbor": "YiJc",
+        "hex": "62225c"
+    },
+    {
+        "cbor": "YsO8",
+        "hex": "62c3bc"
+    },
+    {
+        "cbor": "Y+awtA==",
+        "hex": "63e6b0b4"
+    },
+    {
+        "cbor": "ZPCQhZE=",
+        "hex": "64f0908591"
+    },
+    {
+        "cbor": "gA==",
+        "hex": "80"
+    },
+    {
+        "cbor": "gwECAw==",
+        "hex": "83010203"
+    },
+    {
+        "cbor": "gwGCAgOCBAU=",
+        "hex": "8301820203820405"
+    },
+    {
+        "cbor": "mBkBAgMEBQYHCAkKCwwNDg8QERITFBUWFxgYGBk=",
+        "hex": "98190102030405060708090a0b0c0d0e0f101112131415161718181819"
+    },
+    {
+        "cbor": "oA==",
+        "hex": "a0"
+    },
+    {
+        "cbor": "ogECAwQ=",
+        "hex": "a201020304"
+    },
+    {
+        "cbor": "omFhAWFiggID",
+        "hex": "a26161016162820203"
+    },
+    {
+        "cbor": "gmFhoWFiYWM=",
+        "hex": "826161a161626163"
+    },
+    {
+        "cbor": "pWFhYUFhYmFCYWNhQ2FkYURhZWFF",
+        "hex": "a56161614161626142616361436164614461656145"
+    },
+    {
+        "cbor": "X0IBAkMDBAX/",
+        "hex": "5f42010243030405ff"
+    },
+    {
+        "cbor": "f2VzdHJlYWRtaW5n/w==",
+        "hex": "7f657374726561646d696e67ff"
+    },
+    {
+        "cbor": "n/8=",
+        "hex": "9fff"
+    },
+    {
+        "cbor": "nwGCAgOfBAX//w==",
+        "hex": "9f018202039f0405ffff"
+    },
+    {
+        "cbor": "nwGCAgOCBAX/",
+        "hex": "9f01820203820405ff"
+    },
+    {
+        "cbor": "gwGCAgOfBAX/",
+        "hex": "83018202039f0405ff"
+    },
+    {
+        "cbor": "gwGfAgP/ggQF",
+        "hex": "83019f0203ff820405"
+    },
+    {
+        "cbor": "nwECAwQFBgcICQoLDA0ODxAREhMUFRYXGBgYGf8=",
+        "hex": "9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff"
+    },
+    {
+        "cbor": "v2FhAWFinwID//8=",
+        "hex": "bf61610161629f0203ffff"
+    },
+    {
+        "cbor": "gmFhv2FiYWP/",
+        "hex": "826161bf61626163ff"
+    },
+    {
+        "cbor": "v2NGdW71Y0FtdCH/",
+        "hex": "bf6346756ef563416d7421ff"
+    }
+]

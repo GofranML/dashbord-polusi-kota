@@ -1,0 +1,260 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Webmozart\Assert\Tests;
+
+use PHPUnit\Framework\Attributes\BeforeClass;
+use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionMethod;
+use Webmozart\Assert\Bin\MixinGenerator;
+use Webmozart\Assert\Bin\StaticAnalysisNonReturnGenerator;
+
+#[CoversNothing]
+class ProjectCodeTest extends TestCase
+{
+    private static string $readmeContent;
+    private static string $assertDocComment;
+    private static array $mixinMethodNames;
+
+    /** @var string[] */
+    private array $methodDoesNotHaveNullOrMixin = [
+        'isInitialized',
+    ];
+
+    /** @var string[] */
+    private array $methodDoesNotHaveAllMixin = [
+        'isInitialized',
+    ];
+
+    #[BeforeClass]
+    public static function scanStaticContent(): void
+    {
+        self::$readmeContent = file_get_contents(__DIR__.'/../README.md');
+
+        $rc = new ReflectionClass('\Webmozart\Assert\Mixin');
+        self::$assertDocComment = $rc->getDocComment();
+
+        self::$mixinMethodNames = [];
+        foreach ($rc->getMethods() as $method) {
+            self::$mixinMethodNames[] = $method->name;
+        }
+    }
+
+    #[DataProvider('providesMethodNames')]
+    public function testHasNullOr(string $method): void
+    {
+        if (in_array($method, $this->methodDoesNotHaveNullOrMixin)) {
+            $this->markTestSkipped("The method $method does not have nullOr Mixin.");
+        }
+
+        $fullMethodName = 'nullOr'.ucfirst($method);
+
+        if ($method === 'notNull' || $method === 'null') {
+            $this->addToAssertionCount(1);
+
+            return;
+        }
+        $correct = strpos((string) self::$assertDocComment, '@method static void '.$fullMethodName);
+        if (!$correct) {
+            $correct = in_array($fullMethodName, self::$mixinMethodNames, true);
+        }
+
+        if ($correct === false) {
+            $this->fail(sprintf(
+                'All methods have a corresponding "nullOr" method, please add the "%s" method to the class level doc comment.',
+                $fullMethodName
+            ));
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    #[DataProvider('providesMethodNames')]
+    public function testHasAll(string $method): void
+    {
+        if (in_array($method, $this->methodDoesNotHaveAllMixin)) {
+            $this->markTestSkipped("The method $method does not have all Mixin.");
+        }
+
+        $fullMethodName = 'all'.ucfirst($method);
+
+        $correct = strpos((string) self::$assertDocComment, '@method static void '.$fullMethodName);
+        if (!$correct) {
+            $correct = in_array($fullMethodName, self::$mixinMethodNames, true);
+        }
+
+        if ($correct === false) {
+            $this->fail(sprintf(
+                'All methods have a corresponding "all" method, please add the "%s" method to the class level doc comment.',
+                $fullMethodName
+            ));
+        }
+
+        $this->addToAssertionCount(1);
+    }
+
+    #[DataProvider('providesMethodNames')]
+    public function testIsInReadme(string $method): void
+    {
+        $correct = strpos((string) self::$readmeContent, $method);
+
+        if ($correct === false) {
+            $this->fail(sprintf(
+                'All methods must be documented in the README.md, please add the "%s" method.',
+                $method
+            ));
+        }
+        $this->addToAssertionCount(1);
+    }
+
+    #[DataProvider('provideMethods')]
+    public function testHasThrowsAnnotation(ReflectionMethod $method): void
+    {
+        $doc = $method->getDocComment();
+
+        $this->assertNotFalse(
+            $doc,
+            sprintf(
+                'Expected a doc comment on the "%s" method, but none found',
+                $method->getName()
+            )
+        );
+
+        $this->assertStringContainsString(
+            '@throws InvalidArgumentException',
+            $doc,
+            sprintf(
+                'Expected method "%s" to have an @throws InvalidArgumentException annotation, but none found',
+                $method->getName()
+            )
+        );
+    }
+
+    #[DataProvider('provideMethods')]
+    public function testHasCorrespondingStaticAnalysisFile(ReflectionMethod $method): void
+    {
+        $doc = $method->getDocComment();
+
+        if ($doc === false || strpos($doc, '@psalm-assert') === false) {
+            $this->addToAssertionCount(1);
+
+            return;
+        }
+
+        $this->assertFileExists(
+            __DIR__.'/static-analysis/assert-'.$method->getName().'.php'
+        );
+    }
+
+    #[DataProvider('provideMethods')]
+    public function testHasCorrespondingStaticAnalysisReturnTest(ReflectionMethod $method): void
+    {
+        $file = __DIR__.'/static-analysis/assert-'.$method->getName().'.php';
+
+        $this->assertFileExists($file);
+
+        $contents = file_get_contents($file);
+        $this->assertIsString($contents);
+        $this->assertMatchesRegularExpression(
+            '/return Assert::'.preg_quote($method->getName(), '/').'\(/',
+            $contents
+        );
+    }
+
+    public function testMixinIsUpToDateVersion(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('mixin generator is not expected to run on Windows');
+
+            return;
+        }
+
+        require_once __DIR__.'/../bin/src/MixinGenerator.php';
+
+        $generator = new MixinGenerator();
+
+        $actual = file_get_contents(__DIR__.'/../src/Mixin.php');
+
+        $this->assertEquals($generator->generate(), $actual, 'please regenerate Mixin with `php bin/generate.php` command in the project root');
+    }
+
+    public function testNonReturnStaticAnalysisTestsAreUpToDate(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('non-return static analysis generator is not expected to run on Windows');
+
+            return;
+        }
+
+        require_once __DIR__.'/../bin/src/StaticAnalysisNonReturnGenerator.php';
+
+        $generator = new StaticAnalysisNonReturnGenerator(__DIR__.'/static-analysis');
+
+        foreach ($generator->generatedFiles() as $targetFile => $expectedContent) {
+            $this->assertFileExists($targetFile);
+
+            $actualContent = file_get_contents($targetFile);
+            $this->assertIsString($actualContent);
+            $this->assertEquals(
+                $expectedContent,
+                $actualContent,
+                'please regenerate static analysis tests with `php bin/generate.php` command in the project root'
+            );
+        }
+    }
+
+    /**
+     * @return array
+     */
+    public static function providesMethodNames(): array
+    {
+        return array_map(function (ReflectionMethod $value) {
+            return [$value->getName()];
+        }, self::getMethods());
+    }
+
+    /**
+     * @return array
+     */
+    public static function provideMethods(): array
+    {
+        return array_map(function (ReflectionMethod $value) {
+            return [$value];
+        }, self::getMethods());
+    }
+
+    /**
+     * @return array
+     */
+    private static function getMethods(): array
+    {
+        static $methods;
+
+        if ($methods !== null) {
+            return $methods;
+        }
+
+        $rc = new ReflectionClass('\Webmozart\Assert\Assert');
+        $methods = [];
+
+        $rcMethods = $rc->getMethods(ReflectionMethod::IS_PUBLIC);
+
+        foreach ($rcMethods as $rcMethod) {
+            if ($rcMethod->getFileName() !== $rc->getFileName()) {
+                continue;
+            }
+
+            $methodName = $rcMethod->getName();
+            if (strpos($methodName, '__') === 0) {
+                continue;
+            }
+            $methods[] = $rcMethod;
+        }
+
+        return $methods;
+    }
+}
