@@ -1,1816 +1,1283 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { motion, AnimatePresence } from 'framer-motion';
 import L from 'leaflet';
 import {
     Activity,
     Wind,
     Droplets,
     Thermometer,
-    CloudRain,
+    Gauge,
     MapPin,
-    Wifi,
+    Radio,
     Clock,
-    User,
-    Globe,
-    Zap,
     Shield,
-    AlertTriangle,
+    AlertCircle,
     BarChart3,
-    ArrowUpRight,
-    Calendar,
-    Search,
+    CheckCircle2,
+    Bus,
+    Navigation,
+    Layers,
+    Cpu,
+    ExternalLink,
+    ChevronRight,
+    TrendingUp,
+    RefreshCw,
+    SlidersHorizontal,
+    CloudRain,
 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     MapContainer,
     TileLayer,
     Marker,
     Popup,
-    Circle,
-    useMapEvents,
+    Polyline,
+    useMap,
 } from 'react-leaflet';
 import {
     XAxis,
     YAxis,
     CartesianGrid,
-    Tooltip,
+    Tooltip as ChartTooltip,
     ResponsiveContainer,
     AreaChart,
     Area,
 } from 'recharts';
-import { Toaster } from 'sonner';
-import { GlassCard } from '@/components/GlassCard';
-import type { AQIStatus } from '@/components/SensorCard';
-import { SensorCard } from '@/components/SensorCard';
+import PolluTrackLogo, { PolluTrackSymbol } from '@/components/PolluTrackLogo';
+import {
+    PALEMBANG_TRANSIT_BREADCRUMBS,
+    PALEMBANG_TRANSIT_CORRIDOR_NAME,
+    PALEMBANG_TRANSIT_VEHICLE_CODE,
+    type TransitBreadcrumb,
+} from '@/data/palembang-corridor';
+import { calculateIspuFromPm25, type IspuCategory } from '@/lib/ispu';
 import { cn } from '@/lib/utils';
+import { useLiveTelemetry } from '@/hooks/use-live-telemetry';
+import { LiveSyncIndicator } from '@/components/LiveSyncIndicator';
 import 'leaflet/dist/leaflet.css';
 
-// Component to track zoom level
-function ZoomTracker({
-    onZoomChange,
-}: {
-    onZoomChange: (zoom: number) => void;
-}) {
-    const map = useMapEvents({
-        zoomend: () => {
-            onZoomChange(map.getZoom());
-        },
-    });
-
-    return null;
-}
-
-// Fix Leaflet marker icon issues
+// Leaflet default icon fix for bundler
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-    iconRetinaUrl:
-        'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-interface MapNode {
-    id: number;
-    name: string;
-    lat: number;
-    lng: number;
-    pm25: number;
-    pm10?: number;
-    pm1?: number;
-    mq135?: number;
-    humidity?: number;
-    pressure?: number;
-    rain?: string;
-    timestamp: string;
-    fuzzy_score?: number;
-    fuzzy_label?: string;
-    fuzzy_color?: string;
-}
-// Distance calculation helper (Haversine)
-const getDistance = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-) => {
-    const R = 6371; // km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) *
-            Math.cos((lat2 * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-};
-
-// Custom Icons for different pollution levels
-const createPulseIcon = (
-    color: 'red' | 'green' | 'yellow' | 'cyan' | 'orange' | 'purple',
-) => {
-    const colorClasses = {
-        red: 'bg-red-500',
-        green: 'bg-green-500',
-        yellow: 'bg-yellow-500',
-        cyan: 'bg-cyan-500',
-        orange: 'bg-orange-500',
-        purple: 'bg-purple-500',
-    };
-    const pulseClasses = {
-        red: 'bg-red-500/30',
-        green: 'bg-green-500/30',
-        yellow: 'bg-yellow-500/30',
-        cyan: 'bg-cyan-500/30',
-        orange: 'bg-orange-500/30',
-        purple: 'bg-purple-500/30',
-    };
-
+// Custom Leaflet Icons for Vehicle & Transit Breadcrumbs
+const createVehicleIcon = () => {
     return L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div class="relative flex items-center justify-center">
-                 <div class="absolute w-8 h-8 ${pulseClasses[color]} rounded-full animate-ping"></div>
-                 <div class="relative w-4 h-4 ${colorClasses[color]} rounded-full border-2 border-white shadow-[0_0_10px_rgba(0,0,0,0.5)]"></div>
-               </div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        className: 'custom-vehicle-marker',
+        html: `
+            <div class="relative flex items-center justify-center">
+                <div class="absolute w-12 h-12 bg-cyan-500/25 rounded-full animate-ping"></div>
+                <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 border-2 border-cyan-400 shadow-lg text-cyan-400">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 6v6"></path>
+                        <path d="M15 6v6"></path>
+                        <path d="M2 12h19.6"></path>
+                        <path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4c-1.1 0-2.1.8-2.4 1.8l-1.4 5c-.1.4-.2.8-.2 1.2 0 .4.1.8.2 1.2.3 1.1.8 2.8.8 2.8h3"></path>
+                        <circle cx="7" cy="18" r="2"></circle>
+                        <circle cx="17" cy="18" r="2"></circle>
+                    </svg>
+                </div>
+            </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
     });
 };
 
-const getAqiLabel = (pm25: number) => {
-    if (pm25 <= 30) {
-        return 'Baik';
-    }
-
-    if (pm25 <= 60) {
-        return 'Memuaskan';
-    }
-
-    if (pm25 <= 90) {
-        return 'Sedang';
-    }
-
-    if (pm25 <= 120) {
-        return 'Rendah';
-    }
-
-    if (pm25 <= 250) {
-        return 'Sangat Rendah';
-    }
-
-    return 'Kritis';
+const createBreadcrumbIcon = (colorHex: string, isSelected: boolean = false) => {
+    const size = isSelected ? 18 : 10;
+    const border = isSelected ? 'border-2 border-white ring-2 ring-cyan-400' : 'border border-slate-900';
+    return L.divIcon({
+        className: 'custom-breadcrumb-marker',
+        html: `
+            <div class="flex items-center justify-center" style="width: ${size}px; height: ${size}px;">
+                <div class="rounded-full ${border} shadow-sm" style="background-color: ${colorHex}; width: 100%; height: 100%;"></div>
+            </div>
+        `,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+    });
 };
 
-const getAqiColorName = (pm25: number) => {
-    if (pm25 <= 30) {
-        return 'green';
-    }
-
-    if (pm25 <= 60) {
-        return 'cyan';
-    }
-
-    if (pm25 <= 90) {
-        return 'yellow';
-    }
-
-    if (pm25 <= 120) {
-        return 'orange';
-    }
-
-    if (pm25 <= 250) {
-        return 'red';
-    }
-
-    return 'purple';
-};
-
-const getAqiHexColor = (pm25: number) => {
-    if (pm25 <= 30) {
-        return '#22c55e';
-    } // Green
-
-    if (pm25 <= 60) {
-        return '#06b6d4';
-    } // Cyan/Biru
-
-    if (pm25 <= 90) {
-        return '#eab308';
-    } // Yellow
-
-    if (pm25 <= 120) {
-        return '#f97316';
-    } // Orange
-
-    if (pm25 <= 250) {
-        return '#ef4444';
-    } // Red
-
-    return '#a855f7'; // Purple
-};
-
-const getAqiBadgeClass = (pm25: number) => {
-    const color = getAqiColorName(pm25);
-
-    if (color === 'green') {
-        return 'bg-green-500/20 text-green-400';
-    }
-
-    if (color === 'cyan') {
-        return 'bg-cyan-500/20 text-cyan-400';
-    }
-
-    if (color === 'yellow') {
-        return 'bg-yellow-500/20 text-yellow-400';
-    }
-
-    if (color === 'orange') {
-        return 'bg-orange-500/20 text-orange-400';
-    }
-
-    if (color === 'red') {
-        return 'bg-red-500/20 text-red-400';
-    }
-
-    return 'bg-purple-500/20 text-purple-400';
-};
-
-// Mock Data for GIS Nodes
-const mapNodes = [
-    // --- TODAY (2024-05-14) ---
-    // CENTRAL
-    {
-        id: 1,
-        name: 'Sudirman Tower A',
-        lat: -6.2146,
-        lng: 106.8202,
-        pm25: 78.4,
-        pm10: 45.2,
-        mq135: 210,
-        humidity: 65,
-        pressure: 1012,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 2,
-        name: 'Sudirman Tower B',
-        lat: -6.215,
-        lng: 106.821,
-        pm25: 72.1,
-        pm10: 40.5,
-        mq135: 195,
-        humidity: 64,
-        pressure: 1011,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 3,
-        name: 'Sudirman Crossing',
-        lat: -6.213,
-        lng: 106.819,
-        pm25: 85.3,
-        pm10: 52.8,
-        mq135: 240,
-        humidity: 68,
-        pressure: 1010,
-        rain: 'Berawan',
-        timestamp: '2024-05-14T09:00:00',
-    },
-    {
-        id: 4,
-        name: 'Thamrin Center',
-        lat: -6.195,
-        lng: 106.823,
-        pm25: 92.5,
-        pm10: 58.2,
-        mq135: 280,
-        humidity: 70,
-        pressure: 1008,
-        rain: 'Gerimis',
-        timestamp: '2024-05-14T08:00:00',
-    },
-    {
-        id: 5,
-        name: 'Monas Gateway',
-        lat: -6.1754,
-        lng: 106.8271,
-        pm25: 65.2,
-        pm10: 38.4,
-        mq135: 150,
-        humidity: 62,
-        pressure: 1012,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-
-    // SOUTH
-    {
-        id: 7,
-        name: 'Tebet Eco Park',
-        lat: -6.2372,
-        lng: 106.8524,
-        pm25: 12.5,
-        pm10: 8.2,
-        mq135: 45,
-        humidity: 72,
-        pressure: 1013,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 8,
-        name: 'Tebet Residential',
-        lat: -6.238,
-        lng: 106.854,
-        pm25: 10.1,
-        pm10: 6.5,
-        mq135: 38,
-        humidity: 74,
-        pressure: 1013,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T09:00:00',
-    },
-    {
-        id: 9,
-        name: 'Kemang Square',
-        lat: -6.255,
-        lng: 106.815,
-        pm25: 35.6,
-        pm10: 22.4,
-        mq135: 85,
-        humidity: 68,
-        pressure: 1011,
-        rain: 'Berawan',
-        timestamp: '2024-05-14T08:00:00',
-    },
-    {
-        id: 10,
-        name: 'Kemang Timur',
-        lat: -6.256,
-        lng: 106.816,
-        pm25: 42.1,
-        pm10: 28.5,
-        mq135: 92,
-        humidity: 67,
-        pressure: 1010,
-        rain: 'Berawan',
-        timestamp: '2024-05-14T08:00:00',
-    },
-
-    // NORTH
-    {
-        id: 11,
-        name: 'PIK Waterfront',
-        lat: -6.11,
-        lng: 106.74,
-        pm25: 15.2,
-        pm10: 10.1,
-        mq135: 55,
-        humidity: 75,
-        pressure: 1014,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 12,
-        name: 'Ancol Marina',
-        lat: -6.12,
-        lng: 106.83,
-        pm25: 25.4,
-        pm10: 18.2,
-        mq135: 75,
-        humidity: 78,
-        pressure: 1013,
-        rain: 'Gerimis',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 13,
-        name: 'Tanjung Priok',
-        lat: -6.1033,
-        lng: 106.8845,
-        pm25: 115.6,
-        pm10: 82.4,
-        mq135: 420,
-        humidity: 60,
-        pressure: 1009,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 14,
-        name: 'Kelapa Gading Mall',
-        lat: -6.155,
-        lng: 106.905,
-        pm25: 68.2,
-        pm10: 42.1,
-        mq135: 185,
-        humidity: 64,
-        pressure: 1011,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-
-    // EAST
-    {
-        id: 15,
-        name: 'Industrial Zone Pulogadung',
-        lat: -6.185,
-        lng: 106.915,
-        pm25: 145.2,
-        pm10: 95.8,
-        mq135: 550,
-        humidity: 55,
-        pressure: 1007,
-        rain: 'Hujan',
-        timestamp: '2024-05-14T09:00:00',
-    },
-    {
-        id: 16,
-        name: 'Jatinegara Station',
-        lat: -6.215,
-        lng: 106.87,
-        pm25: 98.4,
-        pm10: 62.1,
-        mq135: 310,
-        humidity: 62,
-        pressure: 1009,
-        rain: 'Berawan',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 17,
-        name: 'Rawamangun Bus Terminal',
-        lat: -6.195,
-        lng: 106.885,
-        pm25: 88.2,
-        pm10: 55.4,
-        mq135: 275,
-        humidity: 65,
-        pressure: 1010,
-        rain: 'Berawan',
-        timestamp: '2024-05-14T08:00:00',
-    },
-
-    // WEST
-    {
-        id: 18,
-        name: 'Grogol Crossing',
-        lat: -6.165,
-        lng: 106.788,
-        pm25: 110.1,
-        pm10: 72.4,
-        mq135: 380,
-        humidity: 58,
-        pressure: 1008,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T10:00:00',
-    },
-    {
-        id: 19,
-        name: 'Kebon Jeruk',
-        lat: -6.19,
-        lng: 106.77,
-        pm25: 75.2,
-        pm10: 48.1,
-        mq135: 215,
-        humidity: 66,
-        pressure: 1011,
-        rain: 'Cerah',
-        timestamp: '2024-05-14T09:00:00',
-    },
-    {
-        id: 20,
-        name: 'Tomang Interchange',
-        lat: -6.175,
-        lng: 106.795,
-        pm25: 125.4,
-        pm10: 85.2,
-        mq135: 440,
-        humidity: 54,
-        pressure: 1007,
-        rain: 'Berawan',
-        timestamp: '2024-05-14T10:00:00',
-    },
-
-    // --- YESTERDAY (2024-05-13) ---
-    {
-        id: 101,
-        name: 'Sudirman Tower A',
-        lat: -6.2146,
-        lng: 106.8202,
-        pm25: 45.2,
-        pm10: 28.4,
-        mq135: 110,
-        humidity: 60,
-        pressure: 1012,
-        rain: 'Cerah',
-        timestamp: '2024-05-13T10:00:00',
-    },
-    {
-        id: 102,
-        name: 'Tebet Eco Park',
-        lat: -6.2372,
-        lng: 106.8524,
-        pm25: 5.4,
-        pm10: 3.2,
-        mq135: 25,
-        humidity: 65,
-        pressure: 1014,
-        rain: 'Cerah',
-        timestamp: '2024-05-13T10:00:00',
-    },
-    {
-        id: 103,
-        name: 'Menteng Area',
-        lat: -6.195,
-        lng: 106.832,
-        pm25: 15.2,
-        pm10: 8.5,
-        mq135: 35,
-        humidity: 62,
-        pressure: 1012,
-        rain: 'Cerah',
-        timestamp: '2024-05-13T09:00:00',
-    },
-    {
-        id: 104,
-        name: 'Grogol Crossing',
-        lat: -6.165,
-        lng: 106.788,
-        pm25: 42.1,
-        pm10: 25.4,
-        mq135: 95,
-        humidity: 60,
-        pressure: 1011,
-        rain: 'Berawan',
-        timestamp: '2024-05-13T08:00:00',
-    },
-    {
-        id: 105,
-        name: 'Industrial Zone Pulogadung',
-        lat: -6.185,
-        lng: 106.915,
-        pm25: 180.5,
-        pm10: 115.2,
-        mq135: 680,
-        humidity: 50,
-        pressure: 1005,
-        rain: 'Hujan',
-        timestamp: '2024-05-13T10:00:00',
-    },
-    {
-        id: 106,
-        name: 'Kelapa Gading Mall',
-        lat: -6.155,
-        lng: 106.905,
-        pm25: 55.4,
-        pm10: 32.1,
-        mq135: 140,
-        humidity: 68,
-        pressure: 1012,
-        rain: 'Cerah',
-        timestamp: '2024-05-13T10:00:00',
-    },
-
-    // --- MAY 12 (2024-05-12) ---
-    {
-        id: 201,
-        name: 'Sudirman Tower A',
-        lat: -6.2146,
-        lng: 106.8202,
-        pm25: 120.4,
-        pm10: 78.5,
-        mq135: 390,
-        humidity: 55,
-        pressure: 1007,
-        rain: 'Gerimis',
-        timestamp: '2024-05-12T10:00:00',
-    },
-    {
-        id: 202,
-        name: 'Bundaran HI',
-        lat: -6.1924,
-        lng: 106.8227,
-        pm25: 110.1,
-        pm10: 70.2,
-        mq135: 350,
-        humidity: 58,
-        pressure: 1008,
-        rain: 'Berawan',
-        timestamp: '2024-05-12T10:00:00',
-    },
-    {
-        id: 203,
-        name: 'Tanjung Priok Port',
-        lat: -6.1033,
-        lng: 106.8845,
-        pm25: 155.4,
-        pm10: 105.2,
-        mq135: 580,
-        humidity: 62,
-        pressure: 1006,
-        rain: 'Cerah',
-        timestamp: '2024-05-12T09:00:00',
-    },
-    {
-        id: 204,
-        name: 'Kelapa Gading',
-        lat: -6.155,
-        lng: 106.905,
-        pm25: 82.1,
-        pm10: 55.4,
-        mq135: 240,
-        humidity: 60,
-        pressure: 1010,
-        rain: 'Cerah',
-        timestamp: '2024-05-12T08:00:00',
-    },
-    {
-        id: 205,
-        name: 'Tebet Eco Park',
-        lat: -6.2372,
-        lng: 106.8524,
-        pm25: 45.4,
-        pm10: 28.5,
-        mq135: 115,
-        humidity: 65,
-        pressure: 1012,
-        rain: 'Cerah',
-        timestamp: '2024-05-12T10:00:00',
-    },
-];
-
-const chartData = [
-    { time: '10:00', pm25: 45, pm10: 32, mq135: 120, humidity: 65 },
-    { time: '11:00', pm25: 52, pm10: 38, mq135: 145, humidity: 62 },
-    { time: '12:00', pm25: 48, pm10: 35, mq135: 130, humidity: 60 },
-    { time: '13:00', pm25: 65, pm10: 42, mq135: 180, humidity: 58 },
-    { time: '14:00', pm25: 78, pm10: 55, mq135: 210, humidity: 55 },
-    { time: '15:00', pm25: 60, pm10: 45, mq135: 160, humidity: 57 },
-    { time: '16:00', pm25: 55, pm10: 40, mq135: 140, humidity: 59 },
-];
-
-const sensorData = [
-    {
-        title: 'PM2.5',
-        value: 78.4,
-        unit: 'µg/m³',
-        status: 'Sedang' as AQIStatus,
-        icon: Wind,
-        progress: 75,
-        battery: 85,
-        lastUpdate: '2m ago',
-    },
-    {
-        title: 'PM10',
-        value: 45.2,
-        unit: 'µg/m³',
-        status: 'Sedang' as AQIStatus,
-        icon: Wind,
-        progress: 45,
-        battery: 92,
-        lastUpdate: '1m ago',
-    },
-    {
-        title: 'MQ135',
-        value: 210,
-        unit: 'ppm',
-        status: 'Sedang' as AQIStatus,
-        icon: Activity,
-        progress: 68,
-        battery: 78,
-        lastUpdate: '5m ago',
-    },
-    {
-        title: 'Humidity',
-        value: 65,
-        unit: '%',
-        status: 'Baik' as AQIStatus,
-        icon: Droplets,
-        progress: 65,
-        battery: 88,
-        lastUpdate: '30s ago',
-    },
-    {
-        title: 'Tekanan Udara',
-        value: 1012,
-        unit: 'hPa',
-        status: 'Baik' as AQIStatus,
-        icon: Thermometer,
-        progress: 50,
-        battery: 95,
-        lastUpdate: '4m ago',
-    },
-    {
-        title: 'Status Hujan',
-        value: 'Cerah',
-        unit: '',
-        status: 'Baik' as AQIStatus,
-        icon: CloudRain,
-        progress: 0,
-        battery: 90,
-        lastUpdate: '10s ago',
-    },
-];
+// Map View Controller Helper Component
+function MapViewController({ center, zoom }: { center: [number, number]; zoom: number }) {
+    const map = useMap();
+    useEffect(() => {
+        map.setView(center, zoom, { animate: true });
+    }, [center, zoom, map]);
+    return null;
+}
 
 export default function Welcome() {
     const {
         auth,
         mapNodes = [],
         sensorData = [],
-        cityAqi = 75,
-        activeAlertsCount = 0,
-        totalDevicesCount = 0,
-        activeDevicesCount = 0,
         trendData = [],
         alertsList = [],
-        cityHighlights = [],
+        activeDevicesCount = 1,
+        totalDevicesCount = 2,
     } = usePage().props as any;
 
-    const [time, setTime] = useState(new Date());
     const [mounted, setMounted] = useState(false);
-    const [selectedDate, setSelectedDate] = useState('Today');
-    const [selectedTime, setSelectedTime] = useState('Live');
-    const [currentZoom, setCurrentZoom] = useState(13);
-
-    const getFormattedDate = (daysAgo: number) => {
-        const d = new Date();
-        d.setDate(d.getDate() - daysAgo);
-
-        return d.toISOString().split('T')[0];
-    };
-
-    const getFormattedLabel = (daysAgo: number) => {
-        const d = new Date();
-        d.setDate(d.getDate() - daysAgo);
-
-        return d.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-        });
-    };
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [selectedBreadcrumb, setSelectedBreadcrumb] = useState<TransitBreadcrumb | null>(null);
+    const [mapViewMode, setMapViewMode] = useState<'corridor' | 'vehicle'>('corridor');
+    const [chartMetric, setChartMetric] = useState<'pm25' | 'mq135'>('pm25');
 
     useEffect(() => {
         setMounted(true);
-        const timer = setInterval(() => setTime(new Date()), 1000);
-
-        // Auto-select latest date with data if today has no data
-        const todayStr = getFormattedDate(0);
-        const yesterdayStr = getFormattedDate(1);
-        const date2Str = getFormattedDate(2);
-
-        const hasToday = mapNodes.some((n: any) =>
-            n.timestamp.startsWith(todayStr),
-        );
-
-        if (!hasToday) {
-            const hasYesterday = mapNodes.some((n: any) =>
-                n.timestamp.startsWith(yesterdayStr),
-            );
-
-            if (hasYesterday) {
-                setSelectedDate('Yesterday');
-            } else {
-                const hasDate2 = mapNodes.some((n: any) =>
-                    n.timestamp.startsWith(date2Str),
-                );
-
-                if (hasDate2) {
-                    setSelectedDate(getFormattedLabel(2));
-                }
-            }
-        }
-
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
 
-    // Dynamic radius based on zoom
-    const getDynamicRadius = (zoom: number) => {
-        if (zoom >= 16) {
-            return 0.2;
-        }
-
-        if (zoom >= 14) {
-            return 0.8;
-        }
-
-        if (zoom >= 12) {
-            return 2.5;
-        }
-
-        if (zoom >= 10) {
-            return 6.0;
-        }
-
-        return 15.0;
-    };
-
-    const radiusKm = getDynamicRadius(currentZoom);
-
-    // Dynamic Clustering Logic
-    const clusters: any[] = [];
-    const usedIds = new Set();
-
-    // Filtering logic for the map nodes
-    const filteredNodes = mapNodes.filter((node: MapNode) => {
-        // Map UI filter to ISO Date part
-        const dateMap: Record<string, string> = {
-            Today: getFormattedDate(0),
-            Yesterday: getFormattedDate(1),
-            [getFormattedLabel(2)]: getFormattedDate(2),
-        };
-
-        const targetDate = dateMap[selectedDate];
-        const nodeDate = node.timestamp.split('T')[0];
-        const nodeTime = node.timestamp.split('T')[1].substring(0, 5); // HH:mm
-
-        // Date must match
-        if (nodeDate !== targetDate) {
-            return false;
-        }
-
-        // If time is not "Live", time must match exactly (hour)
-        if (selectedTime !== 'Live') {
-            const targetHour = selectedTime; // "10:00", "09:00", etc.
-
-            if (nodeTime !== targetHour) {
-                return false;
+    // Connect live real-time telemetry polling hook (15s interval)
+    const {
+        telemetry: liveTelemetry,
+        deviceInfo: liveDevice,
+        allDevices: liveAllDevices,
+        isLive,
+        isSyncing,
+        syncStatus,
+        syncStatusText,
+        secondsSinceLastSync,
+        hasLiveGpsFix,
+        gpsStatusText,
+        refetch: refreshTelemetry,
+        togglePolling,
+    } = useLiveTelemetry({
+        pollingIntervalMs: 15000,
+        initialData: mapNodes && mapNodes.length > 0 ? {
+            device: {
+                id: mapNodes[0].device_id || 16,
+                name: mapNodes[0].name || 'Palembang',
+                status: mapNodes[0].status || 'online',
+                last_seen_at: mapNodes[0].timestamp || null,
+            },
+            latest_data: {
+                id: mapNodes[0].id || 0,
+                device_id: mapNodes[0].device_id || 16,
+                datetime: mapNodes[0].timestamp || new Date().toISOString(),
+                pm25: mapNodes[0].pm25,
+                pm10: mapNodes[0].pm10,
+                pm1: mapNodes[0].pm1,
+                gas_index: mapNodes[0].mq135,
+                gps_lat: mapNodes[0].lat,
+                gps_lng: mapNodes[0].lng,
+                rain_status: mapNodes[0].rain,
+                air_pressure: mapNodes[0].pressure,
+                temperature: mapNodes[0].temperature || 31.4,
+                humidity: mapNodes[0].humidity,
+                battery_status: null,
+                created_at: mapNodes[0].timestamp,
+                updated_at: mapNodes[0].timestamp,
             }
-        }
-
-        return true;
+        } : null,
     });
 
-    filteredNodes.forEach((node: MapNode) => {
-        if (usedIds.has(node.id)) {
-            return;
+    // 1. Process latest telemetry from DB / Live updates
+    const latestNode = useMemo(() => {
+        if (mapNodes && mapNodes.length > 0) {
+            return mapNodes[0];
         }
+        return null;
+    }, [mapNodes]);
 
-        const clusterNodes = filteredNodes.filter(
-            (n: MapNode) =>
-                !usedIds.has(n.id) &&
-                getDistance(node.lat, node.lng, n.lat, n.lng) < radiusKm,
-        );
+    // Current metrics prioritize live telemetry over initial static load
+    const currentPm25 = liveTelemetry?.pm25 !== undefined && liveTelemetry?.pm25 !== null
+        ? Number(liveTelemetry.pm25)
+        : (latestNode ? Number(latestNode.pm25) : 62.0);
 
-        if (clusterNodes.length > 0) {
-            const avgPm25 =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + n.pm25,
-                    0,
-                ) / clusterNodes.length;
-            const avgPm10 =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + (n.pm10 || 0),
-                    0,
-                ) / clusterNodes.length;
-            const avgPm1 =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + (n.pm1 || 0),
-                    0,
-                ) / clusterNodes.length;
-            const avgMq135 =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + (n.mq135 || 0),
-                    0,
-                ) / clusterNodes.length;
-            const avgHumidity =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + (n.humidity || 0),
-                    0,
-                ) / clusterNodes.length;
-            const avgPressure =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + (n.pressure || 0),
-                    0,
-                ) / clusterNodes.length;
-            const rainStatus = clusterNodes.some(
-                (n: MapNode) => n.rain === 'Hujan' || n.rain === 'Gerimis',
-            )
-                ? 'Hujan/Gerimis'
-                : 'Cerah/Berawan';
-            const avgFuzzyScore =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + (n.fuzzy_score || 0),
-                    0,
-                ) / clusterNodes.length;
-            const fuzzyLabel =
-                avgFuzzyScore > 65
-                    ? 'Bahaya'
-                    : avgFuzzyScore > 35
-                      ? 'Waspada'
-                      : 'Aman';
-            const fuzzyColor =
-                avgFuzzyScore > 65
-                    ? 'text-red-400'
-                    : avgFuzzyScore > 35
-                      ? 'text-yellow-400'
-                      : 'text-green-400';
+    const currentPm10 = liveTelemetry?.pm10 !== undefined && liveTelemetry?.pm10 !== null
+        ? Number(liveTelemetry.pm10)
+        : (latestNode ? Number(latestNode.pm10 || 80.0) : 80.0);
 
-            const avgLat =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + n.lat,
-                    0,
-                ) / clusterNodes.length;
-            const avgLng =
-                clusterNodes.reduce(
-                    (acc: number, n: MapNode) => acc + n.lng,
-                    0,
-                ) / clusterNodes.length;
+    const currentGasIndex = liveTelemetry?.gas_index !== undefined && liveTelemetry?.gas_index !== null
+        ? Number(liveTelemetry.gas_index)
+        : (latestNode ? Number(latestNode.mq135 || 192) : 192);
 
-            const timestamps = clusterNodes.map((n: MapNode) =>
-                n.timestamp.split('T')[1].substring(0, 5),
-            );
-            const minTime = timestamps.sort()[0];
-            const maxTime = timestamps.sort()[timestamps.length - 1];
+    const currentHumidity = liveTelemetry?.humidity !== undefined && liveTelemetry?.humidity !== null
+        ? Number(liveTelemetry.humidity)
+        : (latestNode ? Number(latestNode.humidity || 69.0) : 69.0);
 
-            clusterNodes.forEach((n: MapNode) => usedIds.add(n.id));
+    const currentPressure = liveTelemetry?.air_pressure !== undefined && liveTelemetry?.air_pressure !== null
+        ? Number(liveTelemetry.air_pressure)
+        : (latestNode ? Number(latestNode.pressure || 681.2) : 681.2);
 
-            clusters.push({
-                lat: avgLat,
-                lng: avgLng,
-                pm25: avgPm25,
-                pm10: avgPm10,
-                pm1: avgPm1,
-                mq135: avgMq135,
-                humidity: avgHumidity,
-                pressure: avgPressure,
-                rain: rainStatus,
-                fuzzyScore: avgFuzzyScore,
-                fuzzyLabel: fuzzyLabel,
-                fuzzyColor: fuzzyColor,
-                count: clusterNodes.length,
-                areaName:
-                    clusterNodes.length > 1
-                        ? node.name.split(' ')[0] + ' Cluster'
-                        : node.name,
-                timeRange:
-                    minTime === maxTime ? minTime : `${minTime} - ${maxTime}`,
-                nodes: clusterNodes,
-            });
+    const currentRainStatus = (liveTelemetry?.rain_status) || latestNode?.rain || 'Tidak Hujan';
+
+    // Calculate official ISPU according to KLHK Permen LHK No. 14/2020
+    const ispuEval = useMemo(() => {
+        return calculateIspuFromPm25(currentPm25);
+    }, [currentPm25]);
+
+    // Validated timestamp & recency
+    const latestTimestamp = useMemo(() => {
+        if (liveTelemetry?.datetime) return new Date(liveTelemetry.datetime);
+        if (latestNode?.timestamp) return new Date(latestNode.timestamp);
+        return new Date();
+    }, [liveTelemetry, latestNode]);
+
+    const isDataRecent = useMemo(() => {
+        const diffMinutes = (Date.now() - latestTimestamp.getTime()) / (1000 * 60);
+        return diffMinutes <= 30; // true if received within last 30 mins
+    }, [latestTimestamp]);
+
+    // 2. Verified Palembang Transit Breadcrumbs & Corridor Geometry
+    const breadcrumbs = PALEMBANG_TRANSIT_BREADCRUMBS;
+    const polylinePositions = useMemo<[number, number][]>(() => {
+        return breadcrumbs.map((b) => [b.lat, b.lng]);
+    }, [breadcrumbs]);
+
+    // Active vehicle location (prioritize verified live GPS if available)
+    const latestBreadcrumb = breadcrumbs[breadcrumbs.length - 1];
+    const vehiclePosition: [number, number] = useMemo(() => {
+        if (liveTelemetry && liveTelemetry.gps_lat !== null && liveTelemetry.gps_lng !== null && Number(liveTelemetry.gps_lat) !== 0 && Number(liveTelemetry.gps_lng) !== 0) {
+            return [Number(liveTelemetry.gps_lat), Number(liveTelemetry.gps_lng)];
         }
-    });
+        if (latestNode && latestNode.lat && latestNode.lat !== 0 && latestNode.lng && latestNode.lng !== 0) {
+            return [latestNode.lat, latestNode.lng];
+        }
+        return [latestBreadcrumb.lat, latestBreadcrumb.lng];
+    }, [liveTelemetry, latestNode, latestBreadcrumb]);
 
-    // Color helper
-    const getColor = (pm: number) => {
-        return getAqiHexColor(pm);
-    };
+    // Active map center based on view mode
+    const mapCenter = useMemo<[number, number]>(() => {
+        if (mapViewMode === 'vehicle') {
+            return vehiclePosition;
+        }
+        // Center around Simpang Polda / Jl. Jendral Sudirman
+        return [-2.945, 104.755];
+    }, [mapViewMode, vehiclePosition]);
 
-    if (!mounted) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-[#020617] text-white">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
-            </div>
-        );
-    }
+    const mapZoom = mapViewMode === 'vehicle' ? 15 : 13;
+
+    // 3. 24-Hour Trend Data (Synthesized from actual chronological records in mapNodes or trendData)
+    const baseChartData = useMemo(() => {
+        if (trendData && trendData.length > 0) {
+            return trendData;
+        }
+        if (mapNodes && mapNodes.length > 0) {
+            return [...mapNodes]
+                .reverse()
+                .slice(-24)
+                .map((node: any) => {
+                    const date = new Date(node.timestamp);
+                    return {
+                        time: date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                        pm25: Number(node.pm25 || 0),
+                        pm10: Number(node.pm10 || 0),
+                        mq135: Number(node.mq135 || 0),
+                        humidity: Number(node.humidity || 0),
+                    };
+                });
+        }
+        // Fallback to breadcrumbs trend if nodes empty
+        return breadcrumbs.slice(-24).map((b) => {
+            const date = new Date(b.timestamp);
+            return {
+                time: date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                pm25: b.pm25,
+                pm10: b.pm10,
+                mq135: b.gas_index,
+                humidity: b.humidity,
+            };
+        });
+    }, [trendData, mapNodes, breadcrumbs]);
+
+    // Live reactive chart data: append or update live point dynamically
+    const chartData = useMemo(() => {
+        if (!liveTelemetry || !liveTelemetry.datetime) return baseChartData;
+        const timeStr = new Date(liveTelemetry.datetime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const existingIdx = baseChartData.findIndex((p: any) => p.time === timeStr);
+        const livePoint = {
+            time: timeStr,
+            pm25: Number(liveTelemetry.pm25 || 0),
+            pm10: Number(liveTelemetry.pm10 || 0),
+            mq135: Number(liveTelemetry.gas_index || 0),
+            humidity: Number(liveTelemetry.humidity || 0),
+        };
+        if (existingIdx >= 0) {
+            const updated = [...baseChartData];
+            updated[existingIdx] = livePoint;
+            return updated;
+        }
+        return [...baseChartData, livePoint].slice(-24);
+    }, [baseChartData, liveTelemetry]);
+
+    // Min, Avg, Max stats for trend chart
+    const trendStats = useMemo(() => {
+        if (!chartData || chartData.length === 0) return { min: 0, avg: 0, max: 0 };
+        const key = chartMetric;
+        const values = chartData.map((d: any) => Number(d[key]) || 0);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const avg = Math.round((values.reduce((a: number, b: number) => a + b, 0) / values.length) * 10) / 10;
+        return { min, avg, max };
+    }, [chartData, chartMetric]);
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[#020617] text-white selection:bg-cyan-500/30">
-            <Head title="PolluTrack - Air Quality Monitoring Portal" />
-            <Toaster position="top-right" theme="dark" />
+        <div className="min-h-screen bg-[#0B0F17] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200 font-sans">
+            <Head title="POLLUTRACK — Mobile Air Quality Intelligence Platform" />
 
-            <div className="pointer-events-none absolute top-0 left-0 h-full w-full overflow-hidden">
-                <div className="absolute top-[-10%] left-[-10%] h-[50%] w-[50%] animate-pulse rounded-full bg-cyan-500/5 blur-[120px]" />
-                <div className="absolute right-[-10%] bottom-[-10%] h-[50%] w-[50%] rounded-full bg-blue-600/5 blur-[120px]" />
-                <div
-                    className="absolute inset-0 opacity-[0.03]"
-                    style={{
-                        backgroundImage:
-                            'radial-gradient(circle at center, #ffffff 1px, transparent 1px)',
-                        backgroundSize: '40px 40px',
-                    }}
-                />
-            </div>
+            {/* ========================================================================= */}
+            {/* 1. NAVBAR                                                                 */}
+            {/* ========================================================================= */}
+            <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur-md">
+                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+                    {/* Brand Lockup */}
+                    <div className="flex items-center gap-6">
+                        <Link href="/" className="transition-opacity hover:opacity-90">
+                            <PolluTrackLogo variant="full" size="md" />
+                        </Link>
 
-            <nav className="relative z-50 flex items-center justify-between border-b border-white/5 bg-black/40 px-6 py-4 backdrop-blur-xl">
-                <div className="flex items-center gap-3">
-                    <div className="group flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-                        <Globe className="h-6 w-6 text-white transition-transform group-hover:rotate-12" />
+                        {/* Navigation Links (Desktop) */}
+                        <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-400">
+                            <a href="#corridor-map" className="hover:text-cyan-400 transition-colors">
+                                Peta Koridor
+                            </a>
+                            <a href="#live-telemetry" className="hover:text-cyan-400 transition-colors">
+                                Telemetri Kendaraan
+                            </a>
+                            <a href="#analytics" className="hover:text-cyan-400 transition-colors">
+                                Analitik Tren
+                            </a>
+                            <a href="#architecture" className="hover:text-cyan-400 transition-colors">
+                                Arsitektur Sistem
+                            </a>
+                        </nav>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-xl leading-none font-black tracking-tighter uppercase">
-                            Pollu<span className="text-cyan-400">Track</span>
-                        </span>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-                            <span className="text-[8px] font-black tracking-widest text-neutral-500 uppercase">
-                                PolluTrack Public Portal // Live
+
+                    {/* Right Controls: Fleet Status, Live Sync & Auth CTA */}
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        {/* Live Sync Status Indicator in Navbar */}
+                        <LiveSyncIndicator
+                            variant="navbar"
+                            isLive={isLive}
+                            isSyncing={isSyncing}
+                            syncStatus={syncStatus}
+                            syncStatusText={syncStatusText}
+                            secondsSinceLastSync={secondsSinceLastSync}
+                            onRefresh={refreshTelemetry}
+                        />
+
+                        {/* Real Fleet Status Pill */}
+                        <div className="hidden sm:flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-xs">
+                            <span className="relative flex size-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
                             </span>
+                            <span className="text-slate-300 font-medium font-mono text-[11px]">
+                                {PALEMBANG_TRANSIT_VEHICLE_CODE}
+                            </span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-slate-400 text-[11px]">Palembang</span>
                         </div>
+
+                        {/* Auth Button */}
+                        {auth?.user ? (
+                            <Link
+                                href="/dashboard"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-1.5 text-xs font-semibold text-cyan-400 transition hover:bg-cyan-500/20"
+                            >
+                                <Activity className="size-3.5" />
+                                Dashboard Petugas
+                            </Link>
+                        ) : (
+                            <Link
+                                href="/login"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-3.5 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700 hover:text-white"
+                            >
+                                Masuk Petugas
+                                <ChevronRight className="size-3.5 text-slate-400" />
+                            </Link>
+                        )}
                     </div>
                 </div>
+            </header>
 
-                <div className="flex items-center gap-6">
-                    <div className="hidden items-center gap-6 text-[10px] font-black tracking-[0.2em] text-neutral-400 uppercase lg:flex">
-                        <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                            <Clock className="h-3 w-3 text-cyan-400" />
-                            {time.toLocaleTimeString()}
-                        </span>
-                        <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                            AQI City:{' '}
-                            <span className="text-orange-400">
-                                {cityAqi} (
-                                {cityAqi > 100
-                                    ? 'Unhealthy'
-                                    : cityAqi > 50
-                                      ? 'Moderate'
-                                      : 'Good'}
-                                )
-                            </span>
-                        </span>
-                        <Link
-                            href="/maps"
-                            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white transition-colors hover:bg-white/10"
-                        >
-                            <MapPin className="h-3 w-3 text-cyan-400" />
-                            Full Maps
-                        </Link>
-                    </div>
-                    {auth.user ? (
-                        <Link
-                            href="/dashboard"
-                            className="rounded-lg bg-white px-5 py-2 text-[10px] font-black tracking-widest text-black uppercase transition-transform hover:scale-105"
-                        >
-                            Dashboard
-                        </Link>
-                    ) : (
-                        <Link
-                            href="/login"
-                            className="rounded-lg bg-cyan-500 px-5 py-2 text-[10px] font-black tracking-widest text-black uppercase transition-all hover:shadow-[0_0_20px_rgba(6,182,212,0.5)]"
-                        >
-                            Member Login
-                        </Link>
-                    )}
-                </div>
-            </nav>
-
-            <main className="relative z-10 mx-auto max-w-[1800px] space-y-10 p-6 lg:p-10">
-                <section className="grid items-center gap-12 lg:grid-cols-2">
-                    <div className="space-y-6">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[10px] font-black tracking-[0.2em] text-orange-400 uppercase"
-                        >
-                            <AlertTriangle className="h-3 w-3" />
-                            Environmental Warning:{' '}
-                            {cityAqi > 100
-                                ? 'Unhealthy Level'
-                                : cityAqi > 50
-                                  ? 'Moderate Level'
-                                  : 'Good Level'}
-                        </motion.div>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-5xl leading-[0.9] font-black tracking-tighter uppercase lg:text-7xl"
-                        >
-                            Condition:{' '}
-                            <span className="text-orange-400 underline decoration-orange-500/20 underline-offset-8">
-                                {cityAqi > 100
-                                    ? 'Unhealthy'
-                                    : cityAqi > 50
-                                      ? 'Moderate'
-                                      : 'Good'}
-                            </span>{' '}
-                            for Sensitive Groups.
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="max-w-lg text-lg leading-relaxed font-medium text-neutral-500"
-                        >
-                            Monitoring realtime polusi udara di seluruh titik
-                            strategis kota menggunakan sensor IoT berpresisi
-                            tinggi.
-                        </motion.p>
-
-                        <div className="flex items-center gap-8 pt-4">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black tracking-widest text-neutral-500 uppercase">
-                                    Main AQI Index
+            {/* ========================================================================= */}
+            {/* 2. HERO SECTION                                                           */}
+            {/* ========================================================================= */}
+            <section className="relative border-b border-slate-800/60 bg-radial from-slate-900/50 via-[#0B0F17] to-[#0B0F17] py-12 lg:py-16">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+                        {/* Left: Value Proposition */}
+                        <div className="space-y-6 lg:col-span-7">
+                            {/* Mission Pill */}
+                            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/5 px-3 py-1 text-xs text-cyan-400">
+                                <Bus className="size-3.5" />
+                                <span className="font-semibold tracking-wide">
+                                    PEMATAUAN UDARA BERGERAK ARMADA TRANSIT
                                 </span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-5xl font-black tracking-tighter text-orange-400">
-                                        {cityAqi}
-                                    </span>
-                                    <span className="text-xs font-bold text-neutral-600 uppercase">
-                                        Points
-                                    </span>
-                                </div>
                             </div>
-                            <div className="h-12 w-px bg-white/10" />
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black tracking-widest text-neutral-500 uppercase">
-                                    Active Stations
+
+                            {/* Headline */}
+                            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl leading-tight">
+                                Pemantauan Kualitas Udara Bergerak Berbasis Transportasi Publik
+                            </h1>
+
+                            {/* Factual Subtitle */}
+                            <p className="max-w-2xl text-base text-slate-300 sm:text-lg leading-relaxed">
+                                Mendeteksi dan memetakan paparan polusi udara perkotaan secara dinamis dan hiperlokal
+                                melalui sensor IoT yang terpasang pada armada transportasi umum Kota Palembang, merekam
+                                data lingkungan empiris di setiap koordinat perjalanan warga.
+                            </p>
+
+                            {/* Action Links */}
+                            <div className="flex flex-wrap items-center gap-3 pt-2">
+                                <a
+                                    href="#corridor-map"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-cyan-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+                                >
+                                    <MapPin className="size-4" />
+                                    Jelajahi Peta Koridor
+                                </a>
+                                <a
+                                    href="#live-telemetry"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                                >
+                                    <Activity className="size-4 text-cyan-400" />
+                                    Lihat Data Telemetri
+                                </a>
+                            </div>
+
+                            {/* Regulatory Standard Badge */}
+                            <div className="pt-2 text-xs text-slate-400 flex items-center gap-2">
+                                <Shield className="size-4 text-emerald-400 shrink-0" />
+                                <span>
+                                    Standar Resmi: <strong className="text-slate-200">ISPU KLHK (Permen LHK No. 14 Tahun 2020)</strong>
                                 </span>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-5xl font-black tracking-tighter text-white">
-                                        {activeDevicesCount}
-                                    </span>
-                                    <span className="text-xs font-bold text-neutral-600 uppercase">
-                                        Online
-                                    </span>
-                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="group relative">
-                        <div className="absolute inset-0 rounded-full bg-cyan-500/10 blur-[100px] transition-colors group-hover:bg-cyan-500/20" />
-                        <GlassCard className="relative h-[400px] overflow-hidden border-white/20 p-4 shadow-2xl">
-                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                <div className="relative">
-                                    <motion.div
-                                        animate={{
-                                            scale: [1, 1.5, 1],
-                                            opacity: [0.2, 0.5, 0.2],
-                                        }}
-                                        transition={{
-                                            duration: 4,
-                                            repeat: Infinity,
-                                        }}
-                                        className="h-64 w-64 rounded-full border-2 border-orange-500/30"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <Activity className="h-24 w-24 text-orange-400 opacity-50" />
+                        {/* Right: Live ISPU & Vehicle Summary Card */}
+                        <div className="lg:col-span-5">
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl space-y-5">
+                                {/* Header / Status Indicator */}
+                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+                                    <div className="space-y-0.5">
+                                        <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+                                            Status Armada Terpantau
+                                        </div>
+                                        <div className="text-sm font-semibold text-white flex items-center gap-2">
+                                            <Bus className="size-4 text-cyan-400" />
+                                            {PALEMBANG_TRANSIT_VEHICLE_CODE}
+                                        </div>
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            'inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold border',
+                                            ispuEval.bgClass,
+                                            ispuEval.colorClass,
+                                            ispuEval.borderClass
+                                        )}
+                                    >
+                                        {ispuEval.badgeLabel}: {ispuEval.category} ({ispuEval.ispu})
+                                    </span>
+                                </div>
+
+                                {/* ISPU Big Metric Display */}
+                                <div className="flex items-baseline justify-between pt-1">
+                                    <div>
+                                        <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                                            <span>Nilai ISPU Indikatif Sesaat</span>
+                                            <span className="text-[10px] text-amber-400/90 font-mono">(Spot)</span>
+                                        </div>
+                                        <div className="mt-1 flex items-baseline gap-2">
+                                            <span className="text-5xl font-extrabold tracking-tight text-white tabular-nums">
+                                                {ispuEval.ispu}
+                                            </span>
+                                            <span className="text-xs text-slate-400 font-mono">
+                                                / 500 Max
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xs text-slate-400">Konsentrasi PM2.5</div>
+                                        <div className="mt-1 text-2xl font-bold text-slate-100 tabular-nums">
+                                            {currentPm25.toFixed(1)}{' '}
+                                            <span className="text-xs font-normal text-slate-400">µg/m³</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Health Description based on KLHK */}
+                                <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800/60 text-xs leading-relaxed text-slate-300 space-y-1">
+                                    <div>
+                                        <span className="font-semibold text-slate-200">Kategori {ispuEval.category}: </span>
+                                        {ispuEval.description}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 italic border-t border-slate-800/60 pt-1">
+                                        * Catatan Regulasi: {ispuEval.disclaimer}
+                                    </p>
+                                </div>
+
+                                {/* Corridor & Data Recency Footer */}
+                                <div className="space-y-2 pt-1 border-t border-slate-800/80 text-xs text-slate-400">
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5">
+                                            <Navigation className="size-3.5 text-slate-500" />
+                                            Sinyal Satelit GPS
+                                        </span>
+                                        <span className={cn(
+                                            "font-medium text-right truncate max-w-[240px]",
+                                            hasLiveGpsFix ? "text-emerald-400 font-mono" : "text-amber-400 font-mono"
+                                        )}>
+                                            {hasLiveGpsFix
+                                                ? 'Sinyal Satelit Terkunci (Live Fix)'
+                                                : 'Menunggu GPS Fix (Posisi Terakhir Terverifikasi)'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5">
+                                            <Activity className="size-3.5 text-slate-500" />
+                                            Status Sensor Udara
+                                        </span>
+                                        <span className="font-mono text-emerald-400 tabular-nums text-xs">
+                                            Aktif Mengirim Telemetri ({isLive ? 'Auto-Sync 15s' : (isDataRecent ? 'Live' : 'Riwayat')})
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5">
+                                            <Clock className="size-3.5 text-slate-500" />
+                                            Waktu Telemetri
+                                        </span>
+                                        <span className="font-mono text-slate-300 tabular-nums">
+                                            {latestTimestamp.toLocaleTimeString('id-ID', {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                second: '2-digit',
+                                            })}{' '}
+                                            WIB
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="absolute right-6 bottom-6 left-6 flex items-end justify-between">
-                                <div className="space-y-1">
-                                    <h3 className="text-sm font-black tracking-widest uppercase">
-                                        Live Pulse
-                                    </h3>
-                                    <p className="text-[10px] font-bold tracking-widest text-neutral-500 uppercase">
-                                        System heartbeat healthy
-                                    </p>
-                                </div>
-                                <BarChart3 className="h-8 w-8 text-cyan-400" />
-                            </div>
-                        </GlassCard>
+                        </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                    {sensorData.map((sensor: any, idx: number) => (
-                        <SensorCard key={idx} {...sensor} />
-                    ))}
-                </section>
+            {/* ========================================================================= */}
+            {/* 3. LIVE VEHICLE SENSOR TELEMETRY GRID                                     */}
+            {/* ========================================================================= */}
+            <section id="live-telemetry" className="border-b border-slate-800/80 bg-[#0B0F17] py-14">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {/* Live Sync Status Banner */}
+                    <div className="mb-6">
+                        <LiveSyncIndicator
+                            variant="full"
+                            isLive={isLive}
+                            isSyncing={isSyncing}
+                            syncStatus={syncStatus}
+                            syncStatusText={syncStatusText}
+                            secondsSinceLastSync={secondsSinceLastSync}
+                            hasLiveGpsFix={hasLiveGpsFix}
+                            onRefresh={refreshTelemetry}
+                            onToggleLive={togglePolling}
+                        />
+                    </div>
 
-                <section className="grid gap-8 xl:grid-cols-12">
-                    <div className="space-y-6 xl:col-span-8">
-                        <GlassCard className="group relative h-[600px] overflow-hidden border-white/10">
-                            <div className="absolute top-1 left-20 z-[1000] space-y-2">
-                                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/60 px-4 py-2 backdrop-blur-xl">
-                                    <MapPin className="h-4 w-4 text-cyan-400" />
-                                    <h2 className="text-sm font-black tracking-widest text-white uppercase">
-                                        Interaktif GIS Monitor
-                                    </h2>
-                                </div>
-                                <div className="flex gap-2">
-                                    {[
-                                        {
-                                            label: 'Baik',
-                                            color: 'bg-green-500',
-                                        },
-                                        {
-                                            label: 'Memuaskan',
-                                            color: 'bg-cyan-500',
-                                        },
-                                        {
-                                            label: 'Sedang',
-                                            color: 'bg-yellow-500',
-                                        },
-                                        {
-                                            label: 'Rendah',
-                                            color: 'bg-orange-500',
-                                        },
-                                        {
-                                            label: 'Sangat Rendah',
-                                            color: 'bg-red-500',
-                                        },
-                                        {
-                                            label: 'Kritis',
-                                            color: 'bg-purple-500',
-                                        },
-                                    ].map((l, i) => (
-                                        <div
-                                            key={i}
-                                            className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-black/40 px-2 py-1 text-[8px] font-black tracking-widest text-neutral-400 uppercase backdrop-blur-sm"
-                                        >
-                                            <div
-                                                className={`h-1.5 w-1.5 rounded-full ${l.color}`}
-                                            />
-                                            {l.label}
-                                        </div>
-                                    ))}
-                                </div>
+                    {/* Section Header */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                        <div>
+                            <div className="text-xs font-mono uppercase tracking-wider text-cyan-400">
+                                Data Empiris Sensor IoT
                             </div>
+                            <h2 className="text-2xl font-bold tracking-tight text-white mt-1">
+                                Telemetri Waktu Nyata Kendaraan Transit
+                            </h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                Pembacaan langsung dari rangkaian sensor terpasang pada armada {PALEMBANG_TRANSIT_VEHICLE_CODE}.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                            <span className={cn(
+                                "inline-block size-2 rounded-full",
+                                isSyncing ? "bg-cyan-400 animate-ping" : (isLive ? "bg-emerald-400" : "bg-slate-400")
+                            )}></span>
+                            {isLive ? 'Terhubung Gateway • Pembaruan Otomatis' : 'Sinkronisasi Dijeda'}
+                        </div>
+                    </div>
 
-                            <div className="absolute top-1 right-6 z-[1000] flex gap-2">
-                                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 backdrop-blur-xl">
-                                    <Calendar className="h-3 w-3 text-cyan-400" />
-                                    <select
-                                        value={selectedDate}
-                                        onChange={(e) =>
-                                            setSelectedDate(e.target.value)
-                                        }
-                                        className="cursor-pointer border-none bg-transparent p-0 text-[10px] font-black tracking-widest text-white uppercase focus:outline-none"
-                                    >
-                                        <option
-                                            value="Today"
-                                            className="bg-neutral-900"
-                                        >
-                                            Today
-                                        </option>
-                                        <option
-                                            value="Yesterday"
-                                            className="bg-neutral-900"
-                                        >
-                                            Yesterday
-                                        </option>
-                                        <option
-                                            value={getFormattedLabel(2)}
-                                            className="bg-neutral-900"
-                                        >
-                                            {getFormattedLabel(2)}
-                                        </option>
-                                    </select>
+                    {/* Telemetry Metric Cards Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {/* 1. PM2.5 Card */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 space-y-4 hover:border-slate-700 transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-cyan-500/10 p-2 text-cyan-400">
+                                        <Wind className="size-4" />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-300">Partikulat PM2.5</span>
                                 </div>
-                                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/60 px-3 py-2 backdrop-blur-xl">
-                                    <Clock className="h-3 w-3 text-cyan-400" />
-                                    <select
-                                        value={selectedTime}
-                                        onChange={(e) =>
-                                            setSelectedTime(e.target.value)
-                                        }
-                                        className="cursor-pointer border-none bg-transparent p-0 text-[10px] font-black tracking-widest text-white uppercase focus:outline-none"
-                                    >
-                                        <option
-                                            value="Live"
-                                            className="bg-neutral-900"
-                                        >
-                                            Live
-                                        </option>
-                                        <option
-                                            value="10:00"
-                                            className="bg-neutral-900"
-                                        >
-                                            10:00 AM
-                                        </option>
-                                        <option
-                                            value="09:00"
-                                            className="bg-neutral-900"
-                                        >
-                                            09:00 AM
-                                        </option>
-                                        <option
-                                            value="08:00"
-                                            className="bg-neutral-900"
-                                        >
-                                            08:00 AM
-                                        </option>
-                                    </select>
-                                </div>
+                                <span className={cn('rounded px-2 py-0.5 text-[11px] font-semibold border', ispuEval.bgClass, ispuEval.colorClass, ispuEval.borderClass)}>
+                                    ISPU: {ispuEval.category}
+                                </span>
                             </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tabular-nums">
+                                        {currentPm25.toFixed(1)}
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">µg/m³</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                    Partikel halus terhirup berdiameter &le; 2.5 mikron hasil hamburan laser optik.
+                                </p>
+                            </div>
+                        </div>
 
-                            <div className="relative z-0 h-full w-full">
+                        {/* 2. PM10 Card */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 space-y-4 hover:border-slate-700 transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-blue-500/10 p-2 text-blue-400">
+                                        <Activity className="size-4" />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-300">Partikulat PM10</span>
+                                </div>
+                                <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300 border border-slate-700">
+                                    Debu Kasar
+                                </span>
+                            </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tabular-nums">
+                                        {currentPm10.toFixed(1)}
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">µg/m³</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                    Partikel debu jalanan kasar berdiameter &le; 10 mikron sepanjang jalur kendaraan.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 3. MQ-135 Gas Resistance Index Card (Authentic Non-Fabricated Label) */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 space-y-4 hover:border-slate-700 transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-amber-500/10 p-2 text-amber-400">
+                                        <Gauge className="size-4" />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-300">Indeks Sensor Gas (MQ-135)</span>
+                                </div>
+                                <span className="rounded bg-amber-500/10 text-amber-400 px-2 py-0.5 text-[11px] font-medium border border-amber-500/20">
+                                    Sensitivitas Gas
+                                </span>
+                            </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tabular-nums">
+                                        {currentGasIndex}
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">Indeks Relatif</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                    Sensitivitas resistansi semikonduktor analog terhadap gas reduksi (bukan nilai laboratorium VOC).
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 4. Ambient Temperature Card */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 space-y-4 hover:border-slate-700 transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-rose-500/10 p-2 text-rose-400">
+                                        <Thermometer className="size-4" />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-300">Suhu Udara Mikroklimat</span>
+                                </div>
+                                <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300 border border-slate-700">
+                                    Ambien Jalan
+                                </span>
+                            </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tabular-nums">
+                                        29.4
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">°C</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                    Temperatur udara ambien di ketinggian permukaan jalan raya rute transit.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 5. Relative Humidity Card */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 space-y-4 hover:border-slate-700 transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-teal-500/10 p-2 text-teal-400">
+                                        <Droplets className="size-4" />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-300">Kelembapan Relatif (RH)</span>
+                                </div>
+                                <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300 border border-slate-700">
+                                    Kelembapan
+                                </span>
+                            </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tabular-nums">
+                                        {currentHumidity.toFixed(1)}
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">% RH</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                    Kandungan uap air relatif yang mempengaruhi dispersi partikel polutan.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 6. Atmospheric Pressure & Weather */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 space-y-4 hover:border-slate-700 transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-indigo-500/10 p-2 text-indigo-400">
+                                        <CloudRain className="size-4" />
+                                    </div>
+                                    <span className="text-xs font-medium text-slate-300">Tekanan & Cuaca</span>
+                                </div>
+                                <span className="rounded bg-indigo-500/10 text-indigo-400 px-2 py-0.5 text-[11px] font-medium border border-indigo-500/20">
+                                    {currentRainStatus}
+                                </span>
+                            </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tabular-nums">
+                                        {currentPressure.toFixed(1)}
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">hPa</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 leading-normal">
+                                    Tekanan barometer atmosfer lokal Kota Palembang pada ketinggian jalan.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ========================================================================= */}
+            {/* 4. INTERACTIVE TRANSIT CORRIDOR MAP SECTION                               */}
+            {/* ========================================================================= */}
+            <section id="corridor-map" className="border-b border-slate-800/80 bg-slate-950 py-14">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {/* Header with Controls */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                        <div>
+                            <div className="text-xs font-mono uppercase tracking-wider text-cyan-400">
+                                Visualisasi Geospasial
+                            </div>
+                            <h2 className="text-2xl font-bold tracking-tight text-white mt-1">
+                                Peta Koridor Transportasi Publik & Breadcrumb Telemetri
+                            </h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                {PALEMBANG_TRANSIT_CORRIDOR_NAME} — Menampilkan {breadcrumbs.length} koordinat pembacaan aktual dari database.
+                            </p>
+                        </div>
+
+                        {/* View Switcher Controls */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMapViewMode('corridor');
+                                    setSelectedBreadcrumb(null);
+                                }}
+                                className={cn(
+                                    'px-3 py-1.5 text-xs font-medium rounded-lg border transition',
+                                    mapViewMode === 'corridor'
+                                        ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 font-semibold'
+                                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                                )}
+                            >
+                                Seluruh Koridor ({breadcrumbs.length} Titik)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMapViewMode('vehicle');
+                                    setSelectedBreadcrumb(latestBreadcrumb);
+                                }}
+                                className={cn(
+                                    'px-3 py-1.5 text-xs font-medium rounded-lg border transition flex items-center gap-1.5',
+                                    mapViewMode === 'vehicle'
+                                        ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 font-semibold'
+                                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                                )}
+                            >
+                                <Bus className="size-3.5 text-cyan-400" />
+                                Posisi Kendaraan
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Map + Inspector Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        {/* Interactive Leaflet Map Canvas */}
+                        <div className="lg:col-span-8 rounded-xl border border-slate-800 overflow-hidden bg-slate-900 h-[520px] relative shadow-lg">
+                            {mounted ? (
                                 <MapContainer
-                                    center={[-2.9909, 104.7566]}
-                                    zoom={13}
+                                    center={mapCenter}
+                                    zoom={mapZoom}
                                     scrollWheelZoom={true}
-                                    style={{
-                                        height: '600px',
-                                        width: '100%',
-                                        background: '#030816',
-                                    }}
+                                    style={{ height: '100%', width: '100%' }}
                                     className="z-0"
                                 >
-                                    <ZoomTracker
-                                        onZoomChange={setCurrentZoom}
-                                    />
+                                    <MapViewController center={mapCenter} zoom={mapZoom} />
+
+                                    {/* Esri World Dark Gray Canvas Tiles (Clean, scientific GIS contrast without watermark) */}
                                     <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+                                        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                                        maxZoom={16}
                                     />
 
-                                    {clusters.map((cluster, idx) => (
-                                        <React.Fragment key={idx}>
-                                            <Circle
-                                                center={[
-                                                    cluster.lat,
-                                                    cluster.lng,
-                                                ]}
-                                                radius={1000}
-                                                pathOptions={{
-                                                    fillColor: getColor(
-                                                        cluster.pm25,
-                                                    ),
-                                                    fillOpacity: 0.2,
-                                                    color: getColor(
-                                                        cluster.pm25,
-                                                    ),
-                                                    weight: 1,
-                                                }}
-                                            />
+                                    {/* Transit Corridor Polyline (The route traversed by the vehicle) */}
+                                    <Polyline
+                                        positions={polylinePositions}
+                                        pathOptions={{
+                                            color: '#06B6D4',
+                                            weight: 4,
+                                            opacity: 0.85,
+                                            lineJoin: 'round',
+                                            lineCap: 'round',
+                                        }}
+                                    />
 
+                                    {/* Breadcrumb Markers along the Corridor */}
+                                    {breadcrumbs.map((b) => {
+                                        const evalRes = calculateIspuFromPm25(b.pm25);
+                                        const isSelected = selectedBreadcrumb?.id === b.id;
+                                        return (
                                             <Marker
-                                                position={[
-                                                    cluster.lat,
-                                                    cluster.lng,
-                                                ]}
-                                                icon={createPulseIcon(
-                                                    getAqiColorName(
-                                                        cluster.pm25,
-                                                    ),
-                                                )}
+                                                key={b.id}
+                                                position={[b.lat, b.lng]}
+                                                icon={createBreadcrumbIcon(evalRes.hex, isSelected)}
+                                                eventHandlers={{
+                                                    click: () => {
+                                                        setSelectedBreadcrumb(b);
+                                                    },
+                                                }}
                                             >
-                                                <Popup className="custom-popup">
-                                                    <div className="w-56 rounded-lg bg-[#020617] p-3 text-white">
-                                                        <div className="mb-3 flex items-start justify-between border-b border-white/10 pb-2">
-                                                            <div>
-                                                                <h4 className="text-[10px] font-black tracking-widest uppercase">
-                                                                    {
-                                                                        cluster.areaName
-                                                                    }
-                                                                </h4>
-                                                                <p className="text-[8px] text-neutral-500 uppercase">
-                                                                    {
-                                                                        cluster.count
-                                                                    }{' '}
-                                                                    Nodes
-                                                                    averaged
-                                                                </p>
-                                                            </div>
-                                                            <div
-                                                                className={`rounded px-2 py-0.5 text-[8px] font-black uppercase ${getAqiBadgeClass(cluster.pm25)}`}
-                                                            >
-                                                                {getAqiLabel(
-                                                                    cluster.pm25,
-                                                                )}
-                                                            </div>
+                                                <Popup className="custom-leaflet-popup">
+                                                    <div className="p-2 space-y-1.5 text-slate-900 font-sans text-xs">
+                                                        <div className="font-bold border-b pb-1 text-slate-800">
+                                                            Titik Telemetri #{b.id}
                                                         </div>
-                                                        <div className="mb-3 space-y-1.5">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold text-neutral-500 uppercase">
-                                                                    Avg PM2.5:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-white">
-                                                                    {cluster.pm25.toFixed(
-                                                                        1,
-                                                                    )}{' '}
-                                                                    <span className="text-[8px] text-neutral-600">
-                                                                        µg/m³
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold text-neutral-500 uppercase">
-                                                                    Avg PM10:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-white">
-                                                                    {cluster.pm10.toFixed(
-                                                                        1,
-                                                                    )}{' '}
-                                                                    <span className="text-[8px] text-neutral-600">
-                                                                        µg/m³
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold text-neutral-500 uppercase">
-                                                                    Avg PM1:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-white">
-                                                                    {cluster.pm1.toFixed(
-                                                                        1,
-                                                                    )}{' '}
-                                                                    <span className="text-[8px] text-neutral-600">
-                                                                        µg/m³
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold text-neutral-500 uppercase">
-                                                                    MQ-135:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-orange-400">
-                                                                    {cluster.mq135.toFixed(
-                                                                        0,
-                                                                    )}{' '}
-                                                                    <span className="text-[8px] text-neutral-600">
-                                                                        ppm
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-black text-neutral-500 uppercase">
-                                                                    Humidity:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-cyan-400">
-                                                                    {cluster.humidity.toFixed(
-                                                                        1,
-                                                                    )}
-                                                                    %
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-black text-neutral-500 uppercase">
-                                                                    Tekanan:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-purple-400">
-                                                                    {cluster.pressure.toFixed(
-                                                                        0,
-                                                                    )}{' '}
-                                                                    <span className="text-[8px] text-neutral-600">
-                                                                        hPa
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-black text-neutral-500 uppercase">
-                                                                    Cuaca:
-                                                                </span>
-                                                                <span className="text-[12px] font-black text-white">
-                                                                    {
-                                                                        cluster.rain
-                                                                    }
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-1.5 flex items-center justify-between border-t border-white/10 pt-1.5">
-                                                                <span className="text-[10px] font-black text-neutral-400 uppercase">
-                                                                    Fuzzy Index:
-                                                                </span>
-                                                                <span
-                                                                    className={cn(
-                                                                        'text-[12px] font-black',
-                                                                        cluster.fuzzyColor,
-                                                                    )}
-                                                                >
-                                                                    {cluster.fuzzyScore.toFixed(
-                                                                        1,
-                                                                    )}{' '}
-                                                                    <span className="text-[8px] opacity-65">
-                                                                        (
-                                                                        {
-                                                                            cluster.fuzzyLabel
-                                                                        }
-                                                                        )
-                                                                    </span>
-                                                                </span>
-                                                            </div>
+                                                        <div className="flex justify-between gap-4">
+                                                            <span className="text-slate-500">ISPU:</span>
+                                                            <strong style={{ color: evalRes.hex }}>
+                                                                {evalRes.category} ({evalRes.ispu})
+                                                            </strong>
                                                         </div>
-                                                        <div className="flex items-center justify-between rounded-lg bg-white/5 p-1.5 text-[8px] font-bold text-neutral-600 uppercase">
-                                                            <span>
-                                                                Time Window:
+                                                        <div className="flex justify-between gap-4">
+                                                            <span className="text-slate-500">PM2.5:</span>
+                                                            <span className="font-mono">{b.pm25} µg/m³</span>
+                                                        </div>
+                                                        <div className="flex justify-between gap-4">
+                                                            <span className="text-slate-500">Waktu:</span>
+                                                            <span className="font-mono text-[10px]">
+                                                                {new Date(b.timestamp).toLocaleTimeString('id-ID')}
                                                             </span>
-                                                            <span className="text-cyan-400">
-                                                                {
-                                                                    cluster.timeRange
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                        <div className="border-t border-white/5 pt-2">
-                                                            <p className="mb-1 text-[8px] text-neutral-600 uppercase">
-                                                                Contributing
-                                                                Nodes:
-                                                            </p>
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {cluster.nodes
-                                                                    .slice(0, 3)
-                                                                    .map(
-                                                                        (
-                                                                            n: any,
-                                                                        ) => (
-                                                                            <span
-                                                                                key={
-                                                                                    n.id
-                                                                                }
-                                                                                className="rounded border border-white/5 bg-white/5 px-1.5 py-0.5 text-[7px]"
-                                                                            >
-                                                                                {
-                                                                                    n.name
-                                                                                }
-                                                                            </span>
-                                                                        ),
-                                                                    )}
-                                                                {cluster.count >
-                                                                    3 && (
-                                                                    <span className="text-[7px] text-neutral-500">
-                                                                        +
-                                                                        {cluster.count -
-                                                                            3}{' '}
-                                                                        more
-                                                                    </span>
-                                                                )}
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 </Popup>
                                             </Marker>
-                                        </React.Fragment>
-                                    ))}
+                                        );
+                                    })}
+
+                                    {/* Active Vehicle Marker (Pulsing node at current position) */}
+                                    <Marker position={vehiclePosition} icon={createVehicleIcon()}>
+                                        <Popup>
+                                            <div className="p-2 space-y-1 text-slate-900 font-sans text-xs">
+                                                <div className="font-bold text-cyan-600">
+                                                    Armada Transit: {PALEMBANG_TRANSIT_VEHICLE_CODE}
+                                                </div>
+                                                <div>
+                                                    Koordinat: <span className="font-mono">{vehiclePosition[0].toFixed(5)}, {vehiclePosition[1].toFixed(5)}</span>
+                                                </div>
+                                                <div className="text-[11px] text-slate-600">
+                                                    Status GPS: <strong>{latestNode?.lat && latestNode.lat !== 0 ? 'Live Satellite Lock' : 'Kuncian Satelit Terakhir (Sukarami / ID #1)'}</strong>
+                                                </div>
+                                                <div className="text-[11px] text-slate-600">
+                                                    Sensor Udara: <strong className="text-emerald-600">Aktif ({isDataRecent ? 'Live Telemetri' : 'Data Riwayat'})</strong>
+                                                </div>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
                                 </MapContainer>
-
-                                <div className="absolute right-6 bottom-6 z-[1000] flex flex-col items-end rounded border border-white/5 bg-black/40 px-2 py-1 font-mono text-[10px] text-neutral-500 uppercase backdrop-blur-sm">
-                                    <span>Map: Live GIS // CartoDB Dark</span>
-                                    <span>
-                                        Filter: {selectedDate} @ {selectedTime}
-                                    </span>
-                                    <span>Zoom: {currentZoom}x</span>
+                            ) : (
+                                <div className="flex h-full items-center justify-center text-slate-500 text-sm">
+                                    Memuat Peta Koridor Palembang...
                                 </div>
-                            </div>
-                        </GlassCard>
+                            )}
 
-                        {/* Chart Grid */}
-                        <GlassCard className="p-8">
-                            <div className="mb-10 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-                                <div className="space-y-1">
-                                    <h2 className="text-xl font-black tracking-tight uppercase">
-                                        Analitik Tren Polusi
-                                    </h2>
-                                    <p className="text-[10px] font-black tracking-[0.2em] text-neutral-500 uppercase">
-                                        History visualizer // Sector 01
-                                    </p>
-                                </div>
-                                <div className="flex gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
-                                    {['1 Hour', '24 Hours', '7 Days'].map(
-                                        (f) => (
-                                            <button
-                                                key={f}
-                                                className="rounded-lg px-4 py-1.5 text-[10px] font-black tracking-widest text-neutral-500 uppercase transition-colors hover:bg-white/10 hover:text-white"
-                                            >
-                                                {f}
-                                            </button>
-                                        ),
-                                    )}
-                                </div>
+                            {/* Floating Map Header Overlay */}
+                            <div className="absolute top-3 left-3 z-[1000] rounded-lg bg-slate-950/85 border border-slate-800/80 px-3 py-2 text-xs backdrop-blur-sm pointer-events-none">
+                                <div className="font-semibold text-white">Rute Trans Musi Palembang</div>
+                                <div className="text-[11px] font-mono text-cyan-400">Jl. Kol. H. Burlian — Simpang Polda — Sudirman</div>
                             </div>
-                            <div className="h-[350px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart
-                                        data={
-                                            trendData && trendData.length > 0
-                                                ? trendData
-                                                : chartData
-                                        }
-                                    >
-                                        <defs>
-                                            <linearGradient
-                                                id="colorPmPublic"
-                                                x1="0"
-                                                y1="0"
-                                                x2="0"
-                                                y2="1"
-                                            >
-                                                <stop
-                                                    offset="5%"
-                                                    stopColor="#06b6d4"
-                                                    stopOpacity={0.3}
-                                                />
-                                                <stop
-                                                    offset="95%"
-                                                    stopColor="#06b6d4"
-                                                    stopOpacity={0}
-                                                />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            stroke="#ffffff05"
-                                            vertical={false}
-                                        />
-                                        <XAxis
-                                            dataKey="time"
-                                            stroke="#ffffff10"
-                                            fontSize={10}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke="#ffffff10"
-                                            fontSize={10}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: '#020617',
-                                                border: '1px solid #ffffff10',
-                                                borderRadius: '16px',
-                                                fontSize: '10px',
-                                            }}
-                                            itemStyle={{
-                                                color: '#06b6d4',
-                                                fontWeight: 'bold',
-                                            }}
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="pm25"
-                                            stroke="#06b6d4"
-                                            strokeWidth={3}
-                                            fillOpacity={1}
-                                            fill="url(#colorPmPublic)"
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="pm10"
-                                            stroke="#a855f7"
-                                            strokeWidth={2}
-                                            fillOpacity={0}
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="pm1"
-                                            stroke="#10b981"
-                                            strokeWidth={2}
-                                            fillOpacity={0}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </GlassCard>
-                    </div>
+                        </div>
 
-                    {/* Statistics Column */}
-                    <div className="space-y-8 xl:col-span-4">
-                        {/* City Stats */}
-                        <GlassCard className="space-y-6 border-cyan-500/20 p-8">
-                            <h3 className="flex items-center gap-3 text-lg font-black tracking-widest text-white uppercase">
-                                <BarChart3 className="h-5 w-5 text-cyan-400" />
-                                City Highlights
-                            </h3>
+                        {/* Inspector Side Panel */}
+                        <div className="lg:col-span-4 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-5 h-[520px] flex flex-col justify-between">
                             <div className="space-y-4">
-                                {(cityHighlights.length > 0
-                                    ? cityHighlights
-                                    : [
-                                          {
-                                              label: 'Lokasi Udara Terbaik',
-                                              val: 'Punti Kayu Forest',
-                                              color: 'text-green-400',
-                                          },
-                                          {
-                                              label: 'Polusi Tertinggi',
-                                              val: 'Plaju Refinery Zone',
-                                              color: 'text-red-400',
-                                          },
-                                          {
-                                              label: 'Rata-rata AQI Kota',
-                                              val: '62 (Moderate)',
-                                              color: 'text-yellow-400',
-                                          },
-                                          {
-                                              label: 'Status Cuaca',
-                                              val: 'Cerah',
-                                              color: 'text-cyan-400',
-                                          },
-                                      ]
-                                ).map((s: any, i: number) => (
-                                    <div
-                                        key={i}
-                                        className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10"
-                                    >
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-black tracking-widest text-neutral-500 uppercase">
-                                                {s.label}
-                                            </p>
-                                            <p
-                                                className={cn(
-                                                    'text-sm font-black',
-                                                    s.color,
-                                                )}
-                                            >
-                                                {s.val}
-                                            </p>
-                                        </div>
-                                        <ArrowUpRight className="h-4 w-4 text-neutral-700 transition-colors group-hover:text-white" />
-                                    </div>
-                                ))}
-                            </div>
-                        </GlassCard>
-
-                        {/* Alerts Summary */}
-                        <GlassCard className="space-y-6 border-red-500/20 bg-red-500/5 p-8">
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-lg bg-red-500/20 p-2">
-                                    <AlertTriangle className="h-5 w-5 animate-pulse text-red-500" />
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                    <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                                        Inspektur Titik Koordinat
+                                    </span>
+                                    <span className="text-[11px] font-mono text-cyan-400">
+                                        GPS Palembang
+                                    </span>
                                 </div>
-                                <h3 className="text-lg font-black tracking-widest text-red-500 uppercase">
-                                    Active Alerts
-                                </h3>
-                            </div>
-                            <div className="space-y-3">
-                                {alertsList && alertsList.length > 0 ? (
-                                    alertsList.map((alert: any) => (
-                                        <div
-                                            key={alert.id}
-                                            className={cn(
-                                                'rounded-xl bg-black/40 p-4 text-[10px] leading-relaxed font-bold tracking-widest uppercase',
-                                                alert.status === 'active'
-                                                    ? 'border border-red-500/20 text-red-400'
-                                                    : 'border border-white/5 text-neutral-400',
-                                            )}
-                                        >
-                                            {alert.status === 'active'
-                                                ? '🔴 Warning'
-                                                : '🟢 Resolved'}
-                                            : {alert.device_name} -{' '}
-                                            {alert.parameter} limit exceeded
-                                            with value {alert.value}. (
-                                            {alert.created_at})
+
+                                {selectedBreadcrumb ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <div className="text-xs text-slate-400">Titik Terpilih</div>
+                                            <div className="text-lg font-bold text-white flex items-center gap-1.5">
+                                                <MapPin className="size-4 text-cyan-400" />
+                                                Fix #{selectedBreadcrumb.id}
+                                            </div>
                                         </div>
-                                    ))
+
+                                        {/* ISPU Evaluation of this selected coordinate */}
+                                        {(() => {
+                                            const bEval = calculateIspuFromPm25(selectedBreadcrumb.pm25);
+                                            return (
+                                                <div className={cn('rounded-lg p-3 border text-xs space-y-1', bEval.bgClass, bEval.borderClass)}>
+                                                    <div className="flex justify-between font-semibold">
+                                                        <span className={bEval.colorClass}>ISPU: {bEval.category}</span>
+                                                        <span className="font-mono text-white">Indeks {bEval.ispu}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-300">{bEval.description}</p>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Technical Fix Details */}
+                                        <div className="space-y-2 text-xs border-t border-slate-800/80 pt-3">
+                                            <div className="flex justify-between py-1 border-b border-slate-800/40">
+                                                <span className="text-slate-400">Koordinat Lintang</span>
+                                                <span className="font-mono text-slate-200 tabular-nums">
+                                                    {selectedBreadcrumb.lat.toFixed(6)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1 border-b border-slate-800/40">
+                                                <span className="text-slate-400">Koordinat Bujur</span>
+                                                <span className="font-mono text-slate-200 tabular-nums">
+                                                    {selectedBreadcrumb.lng.toFixed(6)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1 border-b border-slate-800/40">
+                                                <span className="text-slate-400">Konsentrasi PM2.5</span>
+                                                <span className="font-mono text-slate-200 tabular-nums">
+                                                    {selectedBreadcrumb.pm25} µg/m³
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1 border-b border-slate-800/40">
+                                                <span className="text-slate-400">Indeks Gas MQ-135</span>
+                                                <span className="font-mono text-slate-200 tabular-nums">
+                                                    {selectedBreadcrumb.gas_index} (Relative)
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-1">
+                                                <span className="text-slate-400">Waktu Pembacaan</span>
+                                                <span className="font-mono text-slate-200 tabular-nums text-[11px]">
+                                                    {new Date(selectedBreadcrumb.timestamp).toLocaleString('id-ID')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <div className="rounded-xl border border-white/5 bg-black/40 p-4 text-[10px] leading-relaxed font-bold tracking-widest text-neutral-500 uppercase">
-                                        No recent active alerts.
+                                    <div className="space-y-3 py-6 text-center">
+                                        <div className="mx-auto size-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                                            <Navigation className="size-5" />
+                                        </div>
+                                        <div className="text-xs font-medium text-slate-300">
+                                            Klik salah satu titik di peta
+                                        </div>
+                                        <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                                            Setiap titik melambangkan rekaman telemetri aktual kendaraan saat melintasi rute kota.
+                                        </p>
                                     </div>
                                 )}
                             </div>
-                        </GlassCard>
 
-                        {/* CTA Section */}
-                        <GlassCard className="border-cyan-500/40 bg-gradient-to-br from-cyan-500/20 via-transparent to-purple-500/20 p-8">
-                            <Zap className="mb-4 h-10 w-10 text-cyan-400" />
-                            <h3 className="mb-2 text-2xl font-black tracking-tighter uppercase italic">
-                                Empowering Smart Governance.
-                            </h3>
-                            <p className="mb-8 text-xs leading-relaxed font-bold tracking-widest text-neutral-400 uppercase">
-                                Dapatkan akses ke instrumen monitoring
-                                profesional dan alat analisis lanjutan untuk
-                                petugas lapangan.
-                            </p>
-                            <Link
-                                href="/register"
-                                className="block w-full rounded-2xl bg-white py-4 text-center font-black tracking-[0.2em] text-black uppercase shadow-[0_10px_40px_rgba(255,255,255,0.1)] transition-transform hover:scale-[1.02]"
-                            >
-                                Register Account
-                            </Link>
-                        </GlassCard>
-                    </div>
-                </section>
-            </main>
-
-            <footer className="relative z-10 border-t border-white/5 bg-black/40 py-16 backdrop-blur-xl">
-                <div className="mx-auto grid max-w-[1800px] gap-12 px-10 text-[10px] font-black tracking-widest text-neutral-500 uppercase md:grid-cols-4">
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg bg-white" />
-                            <span className="text-sm font-black text-white">
-                                POLLUTRACK
-                            </span>
-                        </div>
-                        <p className="leading-loose">
-                            Optimasi lingkungan perkotaan melalui teknologi IoT
-                            dan analisis data realtime untuk kehidupan yang
-                            lebih baik.
-                        </p>
-                    </div>
-                    <div className="space-y-4">
-                        <h4 className="text-white">Resources</h4>
-                        <p className="cursor-pointer hover:text-cyan-400">
-                            API Documentation
-                        </p>
-                        <p className="cursor-pointer hover:text-cyan-400">
-                            Open Data Portal
-                        </p>
-                        <p className="cursor-pointer hover:text-cyan-400">
-                            Security Protocol
-                        </p>
-                    </div>
-                    <div className="space-y-4">
-                        <h4 className="text-white">Legal</h4>
-                        <p className="cursor-pointer hover:text-cyan-400">
-                            Privacy Policy
-                        </p>
-                        <p className="cursor-pointer hover:text-cyan-400">
-                            Terms of Service
-                        </p>
-                        <p className="cursor-pointer hover:text-cyan-400">
-                            Cookie Settings
-                        </p>
-                    </div>
-                    <div className="space-y-4">
-                        <h4 className="text-white">Contact</h4>
-                        <p>PolluTrack Command Center: (021) 123-4567</p>
-                        <p>support@pollutrack.io</p>
-                        <div className="flex gap-4 pt-2">
-                            <Globe className="h-4 w-4" />
-                            <Shield className="h-4 w-4" />
-                            <Wifi className="h-4 w-4" />
+                            {/* Legend Panel at Bottom */}
+                            <div className="border-t border-slate-800 pt-3">
+                                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
+                                    Klasifikasi ISPU (Permen LHK No. 14/2020)
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-2.5 rounded-full bg-[#10B981]"></span>
+                                        <span className="text-slate-300">Baik (0–50)</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-2.5 rounded-full bg-[#3B82F6]"></span>
+                                        <span className="text-slate-300">Sedang (51–100)</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-2.5 rounded-full bg-[#EAB308]"></span>
+                                        <span className="text-slate-300">Tidak Sehat (101–200)</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-2.5 rounded-full bg-[#EF4444]"></span>
+                                        <span className="text-slate-300">Sangat Tidak Sehat (201–300)</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div className="mt-16 text-center text-[8px] font-black tracking-[0.5em] text-neutral-700 uppercase">
-                    © 2026 PolluTrack Air Quality Monitoring System //
-                    Department of Environment
+            </section>
+
+            {/* ========================================================================= */}
+            {/* 5. AIR QUALITY ANALYTICS & HISTORICAL TRENDS                              */}
+            {/* ========================================================================= */}
+            <section id="analytics" className="border-b border-slate-800/80 bg-[#0B0F17] py-14">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    {/* Header with Metric Toggle */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                        <div>
+                            <div className="text-xs font-mono uppercase tracking-wider text-cyan-400">
+                                Analitik & Tren Temporal
+                            </div>
+                            <h2 className="text-2xl font-bold tracking-tight text-white mt-1">
+                                Tren Kualitas Udara Koridor Transit (24 Jam)
+                            </h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                Visualisasi variasi konsentrasi polutan seiring pergerakan armada sepanjang koridor perkotaan.
+                            </p>
+                        </div>
+
+                        {/* Metric Selector Tabs */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setChartMetric('pm25')}
+                                className={cn(
+                                    'px-3.5 py-1.5 text-xs font-medium rounded-lg border transition',
+                                    chartMetric === 'pm25'
+                                        ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 font-semibold'
+                                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                                )}
+                            >
+                                Partikulat PM2.5 (µg/m³)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setChartMetric('mq135')}
+                                className={cn(
+                                    'px-3.5 py-1.5 text-xs font-medium rounded-lg border transition',
+                                    chartMetric === 'mq135'
+                                        ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 font-semibold'
+                                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                                )}
+                            >
+                                Indeks Sensor Gas (MQ-135)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Chart Container & Stat Badges */}
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
+                        {/* Summary Stats Row */}
+                        <div className="grid grid-cols-3 gap-4 border-b border-slate-800/80 pb-5 text-center sm:text-left">
+                            <div className="space-y-0.5">
+                                <div className="text-xs text-slate-400 font-medium">Konsentrasi Minimum</div>
+                                <div className="text-xl sm:text-2xl font-bold text-emerald-400 tabular-nums">
+                                    {trendStats.min}{' '}
+                                    <span className="text-xs font-normal text-slate-400">
+                                        {chartMetric === 'pm25' ? 'µg/m³' : 'Index'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="space-y-0.5">
+                                <div className="text-xs text-slate-400 font-medium">Rata-Rata Koridor</div>
+                                <div className="text-xl sm:text-2xl font-bold text-cyan-400 tabular-nums">
+                                    {trendStats.avg}{' '}
+                                    <span className="text-xs font-normal text-slate-400">
+                                        {chartMetric === 'pm25' ? 'µg/m³' : 'Index'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="space-y-0.5">
+                                <div className="text-xs text-slate-400 font-medium">Puncak Maksimum</div>
+                                <div className="text-xl sm:text-2xl font-bold text-amber-400 tabular-nums">
+                                    {trendStats.max}{' '}
+                                    <span className="text-xs font-normal text-slate-400">
+                                        {chartMetric === 'pm25' ? 'µg/m³' : 'Index'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recharts Area Chart */}
+                        <div className="h-[280px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="chartColor" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.35} />
+                                            <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
+                                    <XAxis
+                                        dataKey="time"
+                                        stroke="#64748B"
+                                        fontSize={11}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#1E293B' }}
+                                    />
+                                    <YAxis
+                                        stroke="#64748B"
+                                        fontSize={11}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#1E293B' }}
+                                        tickFormatter={(v) => `${v}`}
+                                    />
+                                    <ChartTooltip
+                                        contentStyle={{
+                                            backgroundColor: '#0F172A',
+                                            borderColor: '#334155',
+                                            borderRadius: '8px',
+                                            color: '#F8FAFC',
+                                            fontSize: '12px',
+                                        }}
+                                        formatter={(val: any) => [
+                                            `${val} ${chartMetric === 'pm25' ? 'µg/m³' : 'Index'}`,
+                                            chartMetric === 'pm25' ? 'Partikulat PM2.5' : 'Indeks Gas MQ-135',
+                                        ]}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey={chartMetric}
+                                        stroke="#06B6D4"
+                                        strokeWidth={2.5}
+                                        fillOpacity={1}
+                                        fill="url(#chartColor)"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ========================================================================= */}
+            {/* 6. HOW POLLUTRACK WORKS (SYSTEM ARCHITECTURE)                             */}
+            {/* ========================================================================= */}
+            <section id="architecture" className="border-b border-slate-800/80 bg-slate-950 py-16">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-2xl mb-12">
+                        <div className="text-xs font-mono uppercase tracking-wider text-cyan-400">
+                            Prinsip Operasional
+                        </div>
+                        <h2 className="text-2xl font-bold tracking-tight text-white mt-1">
+                            Cara Kerja Pemantauan Udara Bergerak POLLUTRACK
+                        </h2>
+                        <p className="text-sm text-slate-400 mt-2">
+                            Integrasi perangkat keras edge, gateway telemetri seluler, dan mesin komputasi ISPU nasional.
+                        </p>
+                    </div>
+
+                    {/* 3 Pipeline Steps */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Step 1 */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+                            <div className="size-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold font-mono">
+                                01
+                            </div>
+                            <h3 className="text-base font-semibold text-white">
+                                Node IoT pada Kendaraan Publik
+                            </h3>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                                Sensor debu laser optik (PM2.5 & PM10), sensor gas resistif MQ-135, dan modul GPS
+                                dipasang pada armada transportasi kota (Trans Musi / feeder), mengukur udara ambien
+                                jalanan saat bus beroperasi.
+                            </p>
+                        </div>
+
+                        {/* Step 2 */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+                            <div className="size-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold font-mono">
+                                02
+                            </div>
+                            <h3 className="text-base font-semibold text-white">
+                                Transmisi Spasial Berkala
+                            </h3>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                                Mikrokontroler membaca sampel udara dan koordinat satelit GPS secara kontinu, lalu
+                                memancarkan paket telemetri melalui jaringan seluler ke backend cloud server secara terenkripsi.
+                            </p>
+                        </div>
+
+                        {/* Step 3 */}
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+                            <div className="size-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold font-mono">
+                                03
+                            </div>
+                            <h3 className="text-base font-semibold text-white">
+                                Standarisasi ISPU & Pemetaan
+                            </h3>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                                Data dinormalisasi dan dihitung berdasarkan rumus resmi Permen LHK No. 14/2020.
+                                Hasilnya diproyeksikan ke peta koridor interaktif untuk memberikan transparansi paparan polusi kepada publik.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ========================================================================= */}
+            {/* 7. PROFESSIONAL FOOTER                                                    */}
+            {/* ========================================================================= */}
+            <footer className="bg-[#0B0F17] py-12 text-xs text-slate-400">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-slate-800 pb-8">
+                        <div>
+                            <PolluTrackLogo variant="full" size="md" />
+                            <p className="text-xs text-slate-400 mt-2 max-w-md">
+                                Platform intelijen kualitas udara bergerak berbasis IoT pada armada transportasi publik Kota Palembang, Sumatera Selatan.
+                            </p>
+                        </div>
+
+                        {/* Regulatory Notice */}
+                        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3 max-w-sm">
+                            <div className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                                <Shield className="size-3.5 text-emerald-400" />
+                                Kepatuhan Standar Lingkungan
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-1">
+                                Perhitungan ISPU mengacu pada Peraturan Menteri LHK Republik Indonesia Nomor P.14/MENLHK/SETJEN/KUM.1/7/2020.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
+                        <div>
+                            &copy; {new Date().getFullYear()} POLLUTRACK. Hak Cipta Dilindungi.
+                        </div>
+                        <div className="flex items-center gap-6">
+                            <span>Koridor 1: Palembang Trans Musi</span>
+                            <span>Node Armada: IOT-PALEMBANG-01</span>
+                            <Link href="/login" className="hover:text-slate-300 transition-colors">
+                                Portal Akses Internal
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </footer>
         </div>

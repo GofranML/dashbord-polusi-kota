@@ -4,7 +4,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    @if (app()->isProduction() || env('VERCEL') || isset($_ENV['VERCEL']))
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    @endif
 
     {{-- Inline script to detect system dark mode preference and apply it immediately --}}
     <script>
@@ -41,7 +43,7 @@
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
     <x-inertia::head>
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name') === 'Laravel' ? 'POLLUTRACK — Mobile Air Quality Intelligence' : config('app.name') }}</title>
     </x-inertia::head>
 </head>
 

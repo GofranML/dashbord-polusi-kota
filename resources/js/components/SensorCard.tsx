@@ -1,45 +1,43 @@
 import type { LucideIcon } from 'lucide-react';
-import { Battery, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import React from 'react';
+import type { IspuCategory } from '@/lib/ispu';
 import { cn } from '@/lib/utils';
 import { GlassCard } from './GlassCard';
 
-export type AQIStatus =
-    | 'Baik'
-    | 'Memuaskan'
-    | 'Sedang'
-    | 'Rendah'
-    | 'Sangat Rendah'
-    | 'Kritis';
+export type AQIStatus = IspuCategory | string;
 
 interface SensorCardProps {
     title: string;
     value: string | number;
     unit: string;
     status: AQIStatus;
-    icon: LucideIcon;
-    progress: number;
+    icon?: LucideIcon;
+    progress?: number;
     battery?: number;
     lastUpdate?: string;
     className?: string;
 }
 
-const statusColors = {
-    Baik: 'text-green-400',
-    Memuaskan: 'text-cyan-400',
-    Sedang: 'text-yellow-400',
-    Rendah: 'text-orange-400',
-    'Sangat Rendah': 'text-red-400',
-    Kritis: 'text-purple-400',
+const statusBadgeStyles: Record<string, string> = {
+    Baik: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25',
+    Sedang: 'text-blue-400 bg-blue-500/10 border-blue-500/25',
+    'Tidak Sehat': 'text-amber-400 bg-amber-500/10 border-amber-500/25',
+    'Sangat Tidak Sehat': 'text-rose-400 bg-rose-500/10 border-rose-500/25',
+    Berbahaya: 'text-red-400 bg-red-950/40 border-red-800/40',
+    // Fallback for legacy status if any
+    Memuaskan: 'text-blue-400 bg-blue-500/10 border-blue-500/25',
+    Rendah: 'text-amber-400 bg-amber-500/10 border-amber-500/25',
+    'Sangat Rendah': 'text-rose-400 bg-rose-500/10 border-rose-500/25',
+    Kritis: 'text-rose-500 bg-rose-950/40 border-rose-800/40',
 };
 
-const neonMap = {
-    Baik: 'green' as const,
-    Memuaskan: 'cyan' as const,
-    Sedang: 'blue' as const,
-    Rendah: 'orange' as const,
-    'Sangat Rendah': 'red' as const,
-    Kritis: 'purple' as const,
+const borderAccentMap: Record<string, 'green' | 'blue' | 'orange' | 'red' | 'cyan'> = {
+    Baik: 'green',
+    Sedang: 'blue',
+    'Tidak Sehat': 'orange',
+    'Sangat Tidak Sehat': 'red',
+    Berbahaya: 'red',
 };
 
 export function SensorCard({
@@ -48,74 +46,54 @@ export function SensorCard({
     unit,
     status,
     icon: Icon,
-    progress,
-    battery,
     lastUpdate,
     className,
 }: SensorCardProps) {
+    const isGasSensor = title.toLowerCase().includes('mq135') || title.toLowerCase().includes('gas');
+    const badgeStyle = statusBadgeStyles[status] || 'text-slate-300 bg-slate-800 border-slate-700';
+    const accent = borderAccentMap[status] || 'cyan';
+
     return (
-        <GlassCard neonColor={neonMap[status]} className={cn('p-5', className)}>
-            <div className="mb-4 flex items-center justify-between">
-                <div className="rounded-lg bg-white/5 p-2">
-                    {/* <Icon className={cn('w-6 h-6', statusColors[status])} /> */}
-                </div>
-                <div className="flex flex-col items-end">
-                    <span
-                        className={cn(
-                            'rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-tighter uppercase',
-                            statusColors[status],
-                        )}
-                    >
-                        {status}
-                    </span>
-                    {battery !== undefined && (
-                        <div className="mt-1 flex items-center gap-1 font-mono text-[8px] text-neutral-500">
-                            <Battery
-                                className={cn(
-                                    'h-3 w-3',
-                                    battery < 20
-                                        ? 'text-red-500'
-                                        : 'text-green-500',
-                                )}
-                            />
-                            {battery}%
+        <GlassCard neonColor={accent} className={cn('p-5 space-y-4 hover:border-slate-700 transition-colors', className)}>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    {Icon && (
+                        <div className="rounded-lg bg-slate-800/80 p-2 text-cyan-400 border border-slate-700/60">
+                            <Icon className="size-4" />
                         </div>
                     )}
+                    <span className="text-xs font-medium text-slate-300 truncate max-w-[140px]">
+                        {title}
+                    </span>
                 </div>
+                <span className={cn('rounded px-2 py-0.5 text-[10px] font-semibold tracking-wide border', badgeStyle)}>
+                    {status}
+                </span>
             </div>
 
             <div className="space-y-1">
-                <h3 className="text-xs font-bold tracking-widest text-neutral-400 uppercase">
-                    {title}
-                </h3>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black tracking-tighter text-white">
-                        {value}
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-bold tracking-tight text-white tabular-nums">
+                        {typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value}
                     </span>
-                    <span className="text-[10px] font-bold text-neutral-500 uppercase">
+                    <span className="text-xs font-mono text-slate-400">
                         {unit}
                     </span>
                 </div>
+
+                {isGasSensor && (
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                        Indeks resistansi gas analog (uncalibrated sensitivity index).
+                    </p>
+                )}
             </div>
 
-            <div className="mt-4 space-y-2">
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                    <div
-                        className={cn(
-                            'h-full rounded-full transition-all duration-1000 ease-out',
-                            statusColors[status].replace('text', 'bg'),
-                            'shadow-[0_0_8px_currentColor]',
-                        )}
-                        style={{ width: `${progress}%`, color: 'inherit' }}
-                    />
+            <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 font-mono">
+                <div className="flex items-center gap-1.5">
+                    <Clock className="size-3 text-slate-400" />
+                    <span>{lastUpdate || 'Telemetri Terkini'}</span>
                 </div>
-                <div className="flex items-center justify-between text-[8px] font-black tracking-widest text-neutral-500 uppercase">
-                    <div className="flex items-center gap-1">
-                        <Clock className="h-2 w-2" />
-                        {lastUpdate || 'Just Now'}
-                    </div>
-                    <span>{progress}% Capacity</span>
-                </div>
+                <span className="text-slate-400 font-sans">Empiris</span>
             </div>
         </GlassCard>
     );

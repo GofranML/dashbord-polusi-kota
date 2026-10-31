@@ -52,6 +52,13 @@
     --color-chart-4: var(--chart-4);
     --color-chart-5: var(--chart-5);
 
+    --color-ispu-baik: #10b981;
+    --color-ispu-sedang: #3b82f6;
+    --color-ispu-tidaksehat: #eab308;
+    --color-ispu-sangatspt: #ef4444;
+    --color-ispu-berbahaya: #7f1d1d;
+    --color-brand-cyan: #06b6d4;
+
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar-primary: var(--sidebar-primary);
