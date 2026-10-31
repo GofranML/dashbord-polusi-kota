@@ -24,4 +24,9 @@ if ((isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PRO
     $_SERVER['SERVER_PORT'] = 443;
 }
 
+// Normalize SCRIPT_NAME and PHP_SELF so Symfony HttpFoundation treats baseUrl as root,
+// preserving /api routes (e.g. /api/dashboard/latest, /api/iot/upload) on Vercel
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF'] = '/index.php';
+
 require __DIR__ . '/../public/index.php';

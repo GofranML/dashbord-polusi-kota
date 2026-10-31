@@ -25,3 +25,5 @@ yarn-error.log
 /tools
 .agents/
 .playwright-mcp/
+
+.vercel
